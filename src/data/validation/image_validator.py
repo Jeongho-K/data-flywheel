@@ -63,8 +63,8 @@ def validate_image_dataset(
         raise RuntimeError(f"Failed to load images from {dataset_path}: {e}") from e
 
     if len(imagelab.issues) == 0:
-        logger.warning("No images found in %s", dataset_path)
-        return ValidationReport()
+        logger.warning("No images found in %s — returning health_score=0.0", dataset_path)
+        return ValidationReport(total_images=0, issues_found=0, health_score=0.0)
 
     try:
         if issue_types:

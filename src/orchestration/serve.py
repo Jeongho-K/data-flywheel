@@ -9,6 +9,9 @@ Usage:
 
     # Serve with daily schedule:
     uv run python -m src.orchestration.serve --cron "0 2 * * *"
+
+Note: Not all pipeline parameters are exposed via CLI. Use environment
+variables (TRAIN_ prefix) to configure additional training settings.
 """
 
 from __future__ import annotations
@@ -35,21 +38,38 @@ def main() -> None:
     parser.add_argument("--model-name", type=str, default="resnet18")
     parser.add_argument("--num-classes", type=int, default=10)
     parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--experiment-name", type=str, default="default-classification")
     parser.add_argument("--registered-model-name", type=str, default=None)
+    parser.add_argument("--min-health-score", type=float, default=0.5)
+    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://localhost:5050")
 
     args = parser.parse_args()
 
     # Set Prefect API URL for connecting to the server
-    os.environ.setdefault("PREFECT_API_URL", "http://localhost:4200/api")
+    prefect_api_url = os.environ.get("PREFECT_API_URL")
+    if prefect_api_url is None:
+        prefect_api_url = "http://localhost:4200/api"
+        logger.warning(
+            "PREFECT_API_URL not set, defaulting to %s. "
+            "Set this environment variable for production deployments.",
+            prefect_api_url,
+        )
+    os.environ["PREFECT_API_URL"] = prefect_api_url
+    logger.info("Using Prefect API at %s", prefect_api_url)
 
     params = {
         "data_dir": args.data_dir,
         "model_name": args.model_name,
         "num_classes": args.num_classes,
         "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "learning_rate": args.learning_rate,
         "experiment_name": args.experiment_name,
         "registered_model_name": args.registered_model_name,
+        "min_health_score": args.min_health_score,
+        "mlflow_tracking_uri": args.mlflow_tracking_uri,
     }
 
     if args.run_once:
@@ -62,12 +82,23 @@ def main() -> None:
             raise SystemExit(1) from None
     else:
         logger.info("Serving training pipeline with cron='%s'", args.cron)
-        training_pipeline.serve(
-            name="training-pipeline-deployment",
-            cron=args.cron,
-            parameters=params,
-            tags=["training", "cv"],
-        )
+        try:
+            training_pipeline.serve(
+                name="training-pipeline-deployment",
+                cron=args.cron,
+                parameters=params,
+                tags=["training", "cv"],
+            )
+        except KeyboardInterrupt:
+            logger.info("Deployment serve interrupted by user. Shutting down.")
+        except Exception:
+            logger.exception(
+                "Failed to serve training pipeline. "
+                "Check PREFECT_API_URL (%s) and cron expression '%s'.",
+                os.environ.get("PREFECT_API_URL", "not set"),
+                args.cron,
+            )
+            raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

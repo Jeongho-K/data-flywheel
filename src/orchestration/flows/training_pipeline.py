@@ -30,7 +30,7 @@ def training_pipeline(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     experiment_name: str = "default-classification",
-    mlflow_tracking_uri: str = "http://mlflow:5000",
+    mlflow_tracking_uri: str = "http://localhost:5050",
     registered_model_name: str | None = None,
     min_health_score: float = 0.5,
 ) -> dict[str, float]:
@@ -63,8 +63,13 @@ def training_pipeline(
     dataset_path = prepare_dataset(data_dir)
 
     # Step 2: Validate images
-    validation_metrics = validate_images(dataset_path)
-    health_score = validation_metrics.get("health_score", 0.0)
+    validation_metrics = validate_images(str(dataset_path))
+    if "health_score" not in validation_metrics:
+        raise RuntimeError(
+            f"Validation output missing 'health_score' key. "
+            f"Got keys: {list(validation_metrics.keys())}."
+        )
+    health_score = validation_metrics["health_score"]
 
     if health_score < min_health_score:
         raise RuntimeError(
@@ -76,7 +81,7 @@ def training_pipeline(
 
     # Step 3: Train model
     metrics = train_model(
-        data_dir=data_dir,
+        data_dir=str(dataset_path),
         model_name=model_name,
         num_classes=num_classes,
         epochs=epochs,

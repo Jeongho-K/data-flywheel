@@ -40,18 +40,20 @@ def prepare_dataset(data_dir: str) -> Path:
 
 
 @task(name="validate-images", retries=1, retry_delay_seconds=10)
-def validate_images(data_dir: Path) -> dict[str, float]:
+def validate_images(data_dir: str) -> dict[str, float]:
     """Run CleanVision image quality validation.
 
     Args:
         data_dir: Path to dataset directory with train/ subdirectory.
 
     Returns:
-        Validation metrics dict for MLflow logging.
+        Dict with keys 'total_images', 'issues_found', 'health_score' (0.0-1.0),
+        and 'issue_{type}' counts. The 'health_score' key is used by the pipeline's
+        quality gate.
     """
     from src.data.validation import validate_image_dataset
 
-    train_dir = data_dir / "train"
+    train_dir = Path(data_dir) / "train"
     report = validate_image_dataset(train_dir)
     logger.info(
         "Image validation: %d images, %d issues, health=%.2f",

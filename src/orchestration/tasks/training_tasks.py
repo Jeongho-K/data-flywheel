@@ -18,7 +18,7 @@ def train_model(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     experiment_name: str = "default-classification",
-    mlflow_tracking_uri: str = "http://mlflow:5000",
+    mlflow_tracking_uri: str = "http://localhost:5050",
     registered_model_name: str | None = None,
 ) -> dict[str, float]:
     """Run model training with MLflow tracking.
@@ -50,7 +50,7 @@ def train_model(
         experiment_name=experiment_name,
         mlflow_tracking_uri=mlflow_tracking_uri,
         registered_model_name=registered_model_name,
-        num_workers=0,  # Prefect workers handle parallelism
+        num_workers=0,  # Avoid subprocess forking issues inside Prefect task execution
     )
 
     metrics = train(config)
