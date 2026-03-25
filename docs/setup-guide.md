@@ -42,7 +42,7 @@ make ps
 
 `.env.example` 파일을 복사하여 `.env`를 생성하고, 필요에 따라 값을 수정합니다.
 
-상세 환경변수 목록은 [설정 레퍼런스](configuration-reference.md)를 참조하세요.
+상세 환경변수 목록은 `.env.example` 파일과 [Layer 1: Infrastructure](layer-1-infrastructure.md) 문서를 참조하세요.
 
 ## GPU 설정
 
@@ -72,4 +72,6 @@ make test            # 단위 테스트 실행
 
 ## 문제 해결
 
-자주 발생하는 문제와 해결 방법은 [트러블슈팅](troubleshooting.md)을 참조하세요.
+- 서비스가 시작되지 않는 경우: `make logs SERVICE=<서비스명>`으로 로그를 확인하세요.
+- 포트 충돌 시: `.env` 파일에서 해당 서비스의 포트를 변경하세요.
+- 볼륨 초기화가 필요한 경우: `make down-v`로 볼륨을 삭제 후 다시 시작하세요.

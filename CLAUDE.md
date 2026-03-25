@@ -119,3 +119,6 @@ MLOps-Pipeline/
 | `make lint` | Run Ruff linter |
 | `make format` | Run Ruff formatter |
 | `make test` | Run unit tests |
+| `make test-integration` | Run integration tests |
+| `make test-e2e` | Run end-to-end tests |
+| `make verify` | Run Phase verification checks |

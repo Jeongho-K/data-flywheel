@@ -16,6 +16,9 @@ ps:
 	docker compose ps
 
 logs:
+ifndef SERVICE
+	$(error Usage: make logs SERVICE=<name>)
+endif
 	docker compose logs -f $(SERVICE)
 
 # ---------------------------------------------------------------------------

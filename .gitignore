@@ -223,7 +223,7 @@ mlartifacts/
 
 # DVC
 /dvc-storage/
-*.dvc.lock
+dvc.lock
 
 # Model files
 *.pt
