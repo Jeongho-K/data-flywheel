@@ -36,9 +36,10 @@ check "prefect database exists" "docker compose exec postgres psql -U ${POSTGRES
 
 echo ""
 echo "[MinIO Buckets]"
-check "mlflow-artifacts bucket" "docker compose exec minio mc ls local/mlflow-artifacts 2>/dev/null"
-check "dvc-storage bucket" "docker compose exec minio mc ls local/dvc-storage 2>/dev/null"
-check "model-registry bucket" "docker compose exec minio mc ls local/model-registry 2>/dev/null"
+MC_CHECK="docker compose run --rm --entrypoint sh minio-init -c 'mc alias set myminio http://minio:9000 \${MINIO_ROOT_USER} \${MINIO_ROOT_PASSWORD} > /dev/null 2>&1 && mc ls myminio/BUCKET > /dev/null 2>&1'"
+check "mlflow-artifacts bucket" "$(echo "$MC_CHECK" | sed 's/BUCKET/mlflow-artifacts/')"
+check "dvc-storage bucket" "$(echo "$MC_CHECK" | sed 's/BUCKET/dvc-storage/')"
+check "model-registry bucket" "$(echo "$MC_CHECK" | sed 's/BUCKET/model-registry/')"
 
 echo ""
 echo "[UI Accessibility]"
