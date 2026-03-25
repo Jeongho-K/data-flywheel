@@ -76,6 +76,18 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 - **E2E tests**: `tests/e2e/` — full pipeline tests
 - **Naming**: `test_<module>_<behavior>.py`
 
+## MCP 도구 활용
+
+개발 중 추측하지 말고 MCP 도구로 확인한다:
+- **Context7**: 라이브러리 API, 설정 방법, Docker 이미지 사용법 등 공식 문서 조회
+- **Tavily**: Docker Hub 태그 존재 여부, 최신 버전, 호환성 등 웹 검색
+- **Hugging Face**: 모델, 데이터셋 검색 (Phase 2~3)
+
+활용 시점:
+- Docker 이미지 태그를 지정할 때 → Tavily로 실제 존재 여부 확인
+- 프레임워크 설정이 불확실할 때 → Context7으로 공식 문서 조회
+- 에러 발생 시 → Tavily/Context7으로 해결책 검색
+
 ## Documentation
 
 - Architecture diagrams: Mermaid syntax
