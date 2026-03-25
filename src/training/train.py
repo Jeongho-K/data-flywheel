@@ -46,8 +46,14 @@ def main() -> None:
     try:
         metrics = train(config)
         logger.info("Training complete: %s", metrics)
-    except Exception as e:
-        logger.error("Training failed: %s", e)
+    except FileNotFoundError as e:
+        logger.error("Data not found: %s", e)
+        sys.exit(1)
+    except ConnectionError as e:
+        logger.error("MLflow connection failed: %s. Is the server running at %s?", e, config.mlflow_tracking_uri)
+        sys.exit(1)
+    except Exception:
+        logger.exception("Training failed with unexpected error")
         sys.exit(1)
 
 

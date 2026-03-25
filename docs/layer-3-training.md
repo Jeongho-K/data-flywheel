@@ -75,6 +75,7 @@ uv run python -m src.training.train --registered-model-name ImageClassifier
 | `weight_decay` | `0.0001` | 가중치 감쇠 |
 | `image_size` | `224` | 입력 이미지 크기 |
 | `data_dir` | `data/raw/cifar10-demo` | 데이터셋 경로 |
+| `num_workers` | `4` | DataLoader 워커 수 |
 | `experiment_name` | `default-classification` | MLflow 실험명 |
 | `mlflow_tracking_uri` | `http://localhost:5050` | MLflow 서버 URI |
 | `registered_model_name` | `None` | 모델 레지스트리명 (None=건너뜀) |

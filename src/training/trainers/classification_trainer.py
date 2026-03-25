@@ -28,14 +28,33 @@ def resolve_device(device_str: str) -> torch.device:
 
     Returns:
         Resolved torch.device.
+
+    Raises:
+        RuntimeError: If explicitly requested device is not available.
     """
     if device_str == "auto":
         if torch.cuda.is_available():
             return torch.device("cuda")
         if torch.backends.mps.is_available():
             return torch.device("mps")
+        logger.warning(
+            "No GPU detected (CUDA/MPS unavailable). Falling back to CPU. "
+            "Training will be significantly slower."
+        )
         return torch.device("cpu")
-    return torch.device(device_str)
+
+    device = torch.device(device_str)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(
+            f"Device '{device_str}' requested but CUDA is not available. "
+            "Use --device auto or --device cpu."
+        )
+    if device.type == "mps" and not torch.backends.mps.is_available():
+        raise RuntimeError(
+            f"Device '{device_str}' requested but MPS is not available. "
+            "Use --device auto or --device cpu."
+        )
+    return device
 
 
 def train(config: TrainConfig) -> dict[str, float]:
@@ -45,10 +64,17 @@ def train(config: TrainConfig) -> dict[str, float]:
         config: Training configuration.
 
     Returns:
-        Dictionary of final metrics (loss, accuracy).
+        Dictionary with keys 'val_loss', 'val_accuracy' (final epoch),
+        and 'best_val_accuracy' (best across all epochs).
+
+    Raises:
+        FileNotFoundError: If train or val subdirectory does not exist.
+        ValueError: If model_name is unsupported.
+        RuntimeError: If MLflow connection fails or device is unavailable.
     """
     device = resolve_device(config.device)
     logger.info("Using device: %s", device)
+    pin_memory = device.type == "cuda"
 
     # Data loaders
     train_dir = Path(config.data_dir) / "train"
@@ -62,13 +88,18 @@ def train(config: TrainConfig) -> dict[str, float]:
     train_dataset = ImageFolder(str(train_dir), transform=get_train_transforms(config.image_size))
     val_dataset = ImageFolder(str(val_dir), transform=get_eval_transforms(config.image_size))
 
+    if len(train_dataset) == 0:
+        raise RuntimeError(f"Training dataset is empty: {train_dir}")
+    if len(val_dataset) == 0:
+        raise RuntimeError(f"Validation dataset is empty: {val_dir}")
+
     train_loader = DataLoader(
         train_dataset, batch_size=config.batch_size,
-        shuffle=True, num_workers=config.num_workers, pin_memory=True,
+        shuffle=True, num_workers=config.num_workers, pin_memory=pin_memory,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=config.batch_size,
-        shuffle=False, num_workers=config.num_workers, pin_memory=True,
+        shuffle=False, num_workers=config.num_workers, pin_memory=pin_memory,
     )
 
     logger.info("Train: %d images, Val: %d images", len(train_dataset), len(val_dataset))
@@ -103,6 +134,7 @@ def train(config: TrainConfig) -> dict[str, float]:
         })
 
         best_val_acc = 0.0
+        best_state_dict: dict[str, torch.Tensor] | None = None
         val_loss = 0.0
         val_acc = 0.0
 
@@ -130,18 +162,31 @@ def train(config: TrainConfig) -> dict[str, float]:
                 epoch + 1, config.epochs, train_loss, train_acc, val_loss, val_acc,
             )
 
+            # Track best model
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
+                best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+
+        # Restore best model weights
+        if best_state_dict is not None:
+            model.load_state_dict(best_state_dict)
 
         # Log final metrics
         mlflow.log_metric("best_val_accuracy", best_val_acc)
 
-        # Log model to MLflow
-        mlflow.pytorch.log_model(
-            model,
-            name="model",
-            registered_model_name=config.registered_model_name,
-        )
+        # Log model to MLflow (in eval mode)
+        model.eval()
+        try:
+            mlflow.pytorch.log_model(
+                model,
+                name="model",
+                registered_model_name=config.registered_model_name,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to log model to MLflow. Training metrics are still recorded in run %s.",
+                run.info.run_id,
+            )
 
         logger.info("Run %s complete. Best val accuracy: %.4f", run.info.run_id, best_val_acc)
 
@@ -168,6 +213,9 @@ def _run_epoch(
 
     Returns:
         Tuple of (average loss, accuracy).
+
+    Raises:
+        RuntimeError: If no samples were processed (empty dataset).
     """
     if training:
         model.train()
@@ -196,7 +244,13 @@ def _run_epoch(
             correct += predicted.eq(targets).sum().item()
             total += targets.size(0)
 
-    avg_loss = total_loss / max(total, 1)
-    accuracy = correct / max(total, 1)
+    if total == 0:
+        raise RuntimeError(
+            "No samples were processed during the epoch. "
+            "Check that the dataset directory contains valid images."
+        )
+
+    avg_loss = total_loss / total
+    accuracy = correct / total
 
     return avg_loss, accuracy

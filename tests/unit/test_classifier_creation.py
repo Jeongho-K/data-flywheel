@@ -1,6 +1,7 @@
 """Unit tests for model creation."""
 
 import pytest
+import torch
 import torch.nn as nn
 
 from src.training.models.classifier import SUPPORTED_MODELS, create_classifier
@@ -33,7 +34,16 @@ class TestCreateClassifier:
             create_classifier("nonexistent_model", num_classes=10)
 
     def test_all_supported_models(self) -> None:
-        """All supported models should be creatable."""
+        """All supported models should be creatable with correct output size."""
         for name in SUPPORTED_MODELS:
             model = create_classifier(name, num_classes=2, pretrained=False)
             assert isinstance(model, nn.Module)
+            # Verify output shape with a dummy forward pass
+            dummy = torch.randn(1, 3, 224, 224)
+            output = model(dummy)
+            assert output.shape == (1, 2), f"{name}: expected (1,2), got {output.shape}"
+
+    def test_num_classes_zero_raises(self) -> None:
+        """Zero num_classes should raise ValueError."""
+        with pytest.raises(ValueError, match="num_classes must be >= 1"):
+            create_classifier("resnet18", num_classes=0)
