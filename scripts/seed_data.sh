@@ -1,5 +1,5 @@
 #!/bin/bash
-# Initialize MLOps Pipeline services with seed data.
+# Initialize MLOps Pipeline with default MLflow experiments and verify service health.
 # Run after `make up` when all services are healthy.
 
 set -e

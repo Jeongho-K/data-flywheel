@@ -1,6 +1,6 @@
 #!/bin/bash
 # Verify Phase 1 infrastructure is working correctly.
-# Run after `make up` and `make seed`.
+# Run after `make up` when all services are healthy.
 
 set -e
 

@@ -8,11 +8,13 @@ scrape_configs:
       - targets: ["localhost:9090"]
 
   # Phase 5: FastAPI serving metrics
-  # - job_name: "fastapi"
+  # TODO: confirm actual compose service name when Phase 5 is implemented
+  # - job_name: "serving"
   #   static_configs:
-  #     - targets: ["fastapi:8000"]
+  #     - targets: ["serving:8000"]
 
   # Phase 6: Evidently monitoring metrics
-  # - job_name: "evidently"
+  # TODO: confirm actual compose service name when Phase 6 is implemented
+  # - job_name: "monitoring"
   #   static_configs:
-  #     - targets: ["evidently:8080"]
+  #     - targets: ["monitoring:8080"]

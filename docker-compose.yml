@@ -96,7 +96,6 @@ services:
   # ---------------------------------------------------------------------------
   prefect-server:
     image: prefecthq/prefect:3.6.23-python3.11
-    command: prefect server start --host 0.0.0.0 --port 4200
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_USER:-mlops}:${POSTGRES_PASSWORD:-mlops_secret}@postgres:5432/prefect
       PREFECT_SERVER_API_HOST: 0.0.0.0
@@ -114,7 +113,7 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
-  # Redis - Prefect messaging backend
+  # Redis - In-memory data store (used by Prefect workers in Phase 4)
   # ---------------------------------------------------------------------------
   redis:
     image: redis:7.4-alpine
