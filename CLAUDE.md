@@ -82,7 +82,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
   1. **코드 리뷰** — 7인 서브에이전트 병렬 실행:
      - code-reviewer, silent-failure-hunter, comment-analyzer, code-simplifier
      - type-design-analyzer, pr-test-analyzer, feature-dev:code-reviewer
-     - superpowers:code-reviewer (플랜 대비 구현 검증), feature-dev:code-explorer (아키텍처 일관성)
+     - superpowers:code-reviewer, feature-dev:code-explorer
   2. 발견된 이슈 수정 → 재리뷰 (모든 리뷰어 통과할 때까지 반복)
   3. **QC 테스트** — 실제 서비스를 올리고 유저 입장에서 E2E 동작 검증 (서비스 기동, API 호출, UI 접속 등)
   4. QC 이슈 발견 시 수정 → 재 QC (통과할 때까지 반복)
@@ -166,3 +166,5 @@ MLOps-Pipeline/
 - **Prefect 서버 시작**: 이미지 기본 entrypoint가 서버를 시작하지 않음 → `command: prefect server start --host 0.0.0.0 --port 4200` 필수
 - **MinIO mc 이미지**: `minio/minio` 서버 이미지에 `mc` CLI 미포함. 버킷 작업은 별도 `minio/mc` 이미지 사용
 - **DB 초기화 스크립트**: `scripts/create-multiple-databases.sh`는 볼륨이 비어있을 때만 실행. DB 추가 시 `make down-v` 필요
+- **학습 시 S3 인증**: 로컬에서 `make train` 실행 시 MinIO 인증 환경변수 필요:
+  `MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin123`
