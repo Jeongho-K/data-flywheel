@@ -16,6 +16,8 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 ## 빠른 시작
 
+> Phase 1(Infrastructure) 구현 후 사용할 수 있습니다.
+
 ```bash
 cp .env.example .env
 make up

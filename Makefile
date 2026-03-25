@@ -25,9 +25,11 @@ endif
 # Initialization
 # ---------------------------------------------------------------------------
 seed:
+	@test -f scripts/seed_data.sh || { echo "Error: scripts/seed_data.sh not found. Available after Phase 1."; exit 1; }
 	bash scripts/seed_data.sh
 
 verify:
+	@test -f scripts/verify.sh || { echo "Error: scripts/verify.sh not found. Available after Phase 1."; exit 1; }
 	bash scripts/verify.sh
 
 # ---------------------------------------------------------------------------
