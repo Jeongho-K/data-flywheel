@@ -1,7 +1,6 @@
 """Label validation using CleanLab.
 
-Detects label issues in classification datasets: mislabeled samples,
-ambiguous labels, and out-of-distribution examples.
+Detects likely mislabeled samples and computes per-sample label quality scores.
 """
 
 from __future__ import annotations
@@ -54,25 +53,37 @@ def validate_labels(
     Returns:
         LabelReport with issue indices and quality scores.
     """
+    if len(labels) == 0:
+        raise ValueError("Cannot validate empty label set.")
+
     if labels.shape[0] != pred_probs.shape[0]:
         raise ValueError(
             f"Labels ({labels.shape[0]}) and pred_probs ({pred_probs.shape[0]}) "
             "must have the same number of samples."
         )
 
+    if pred_probs.ndim != 2:
+        raise ValueError(f"pred_probs must be 2D, got shape {pred_probs.shape}.")
+
+    if np.any(pred_probs < 0) or np.any(pred_probs > 1):
+        raise ValueError("pred_probs values must be in [0, 1]. Got unnormalized values.")
+
     logger.info("Starting CleanLab label validation on %d samples", len(labels))
 
-    issue_mask = find_label_issues(
-        labels=labels,
-        pred_probs=pred_probs,
-        filter_by=filter_by,
-    )
-    issue_indices = np.where(issue_mask)[0].tolist()
+    try:
+        issue_mask = find_label_issues(
+            labels=labels,
+            pred_probs=pred_probs,
+            filter_by=filter_by,
+        )
+        issue_indices = np.where(issue_mask)[0].tolist()
 
-    quality_scores = get_label_quality_scores(
-        labels=labels,
-        pred_probs=pred_probs,
-    )
+        quality_scores = get_label_quality_scores(
+            labels=labels,
+            pred_probs=pred_probs,
+        )
+    except (ValueError, np.linalg.LinAlgError, RuntimeError) as e:
+        raise RuntimeError(f"CleanLab analysis failed: {e}") from e
 
     report = LabelReport(
         total_samples=len(labels),

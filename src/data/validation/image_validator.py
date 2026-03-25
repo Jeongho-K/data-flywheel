@@ -46,7 +46,7 @@ def validate_image_dataset(
         issue_types: Specific issue types to check. None checks all.
             Options: "dark", "light", "odd_aspect_ratio", "odd_size",
             "low_information", "exact_duplicates", "near_duplicates",
-            "blurry", "grayscale".
+            "blurry".
 
     Returns:
         ValidationReport with summary statistics.
@@ -57,12 +57,22 @@ def validate_image_dataset(
 
     logger.info("Starting CleanVision validation on %s", dataset_path)
 
-    imagelab = Imagelab(data_path=str(dataset_path))
+    try:
+        imagelab = Imagelab(data_path=str(dataset_path))
+    except (OSError, ValueError, RuntimeError) as e:
+        raise RuntimeError(f"Failed to load images from {dataset_path}: {e}") from e
 
-    if issue_types:
-        imagelab.find_issues(issue_types={t: {} for t in issue_types})
-    else:
-        imagelab.find_issues()
+    if len(imagelab.issues) == 0:
+        logger.warning("No images found in %s", dataset_path)
+        return ValidationReport()
+
+    try:
+        if issue_types:
+            imagelab.find_issues(issue_types={t: {} for t in issue_types})
+        else:
+            imagelab.find_issues()
+    except (OSError, ValueError, RuntimeError) as e:
+        raise RuntimeError(f"CleanVision analysis failed on {dataset_path}: {e}") from e
 
     summary = imagelab.issue_summary
     total_images = len(imagelab.issues)
@@ -95,20 +105,38 @@ def validate_image_dataset(
     return report
 
 
+VALID_ISSUE_TYPES = {
+    "dark", "light", "odd_aspect_ratio", "odd_size",
+    "low_information", "exact_duplicates", "near_duplicates", "blurry",
+}
+
+
 def get_issue_image_paths(
     dataset_path: str | Path,
     issue_type: str,
 ) -> list[Path]:
     """Get paths of images flagged for a specific issue type.
 
+    Note: This re-runs CleanVision analysis. For large datasets,
+    consider caching the Imagelab instance.
+
     Args:
         dataset_path: Path to directory containing images.
         issue_type: The issue type to filter by.
+            See validate_image_dataset for valid issue types.
 
     Returns:
         List of image paths with the specified issue.
     """
     dataset_path = Path(dataset_path)
+    if not dataset_path.exists():
+        raise FileNotFoundError(f"Dataset path does not exist: {dataset_path}")
+
+    if issue_type not in VALID_ISSUE_TYPES:
+        raise ValueError(
+            f"Unknown issue type '{issue_type}'. Valid types: {sorted(VALID_ISSUE_TYPES)}"
+        )
+
     imagelab = Imagelab(data_path=str(dataset_path))
     imagelab.find_issues(issue_types={issue_type: {}})
 

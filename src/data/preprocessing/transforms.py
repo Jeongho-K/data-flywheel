@@ -39,7 +39,7 @@ def get_eval_transforms(image_size: int = 224) -> v2.Compose:
         Composed transform pipeline.
     """
     return v2.Compose([
-        v2.Resize(int(image_size * 1.14)),
+        v2.Resize(int(image_size * 1.14)),  # ~256px for 224 crop (standard ImageNet ratio)
         v2.CenterCrop(image_size),
         v2.ToImage(),
         v2.ToDtype(dtype=torch.float32, scale=True),

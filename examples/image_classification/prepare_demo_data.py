@@ -61,11 +61,26 @@ def prepare_demo_dataset(output_dir: str | Path = "data/raw/cifar10-demo") -> Pa
         return output_dir
 
     logger.info("Downloading CIFAR-10...")
-    train_dataset = CIFAR10(root="/tmp/cifar10", train=True, download=True)
-    val_dataset = CIFAR10(root="/tmp/cifar10", train=False, download=True)
+    try:
+        train_dataset = CIFAR10(root="/tmp/cifar10", train=True, download=True)
+        val_dataset = CIFAR10(root="/tmp/cifar10", train=False, download=True)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(
+            f"Failed to download CIFAR-10: {e}. "
+            "Check your internet connection. If behind a proxy, set HTTP_PROXY/HTTPS_PROXY."
+        ) from e
 
-    _save_subset(train_dataset, output_dir / "train", TRAIN_PER_CLASS)
-    _save_subset(val_dataset, output_dir / "val", VAL_PER_CLASS)
+    try:
+        _save_subset(train_dataset, output_dir / "train", TRAIN_PER_CLASS)
+        _save_subset(val_dataset, output_dir / "val", VAL_PER_CLASS)
+    except Exception:
+        # Clean up partial writes to avoid corrupt dataset on next run
+        import shutil
+
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+            logger.error("Cleaned up partial dataset at %s", output_dir)
+        raise
 
     total = (TRAIN_PER_CLASS + VAL_PER_CLASS) * len(CIFAR10_CLASSES)
     logger.info("Demo dataset created: %d images at %s", total, output_dir)
@@ -102,4 +117,9 @@ def _save_subset(
 
 
 if __name__ == "__main__":
-    prepare_demo_dataset()
+    try:
+        path = prepare_demo_dataset()
+        logger.info("Done. Dataset at: %s", path)
+    except Exception as e:
+        logger.error("Failed to prepare demo dataset: %s", e)
+        raise SystemExit(1) from e

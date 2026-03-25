@@ -70,9 +70,8 @@ print(f"Issues: {report.issue_types}")
 
 ### 검출 항목
 
-- 잘못된 라벨 (mislabeled)
-- 모호한 샘플 (ambiguous)
-- 분포 밖 샘플 (out-of-distribution)
+- 잘못된 라벨 (mislabeled samples)
+- 샘플별 라벨 품질 점수 (per-sample quality scores)
 
 ### 사용
 
