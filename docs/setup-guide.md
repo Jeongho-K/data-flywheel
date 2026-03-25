@@ -1,5 +1,7 @@
 # 설치 및 실행 가이드
 
+> **참고:** `make up`, `make seed` 등 Docker 관련 명령은 Phase 1(Infrastructure) 구현 후 사용할 수 있습니다.
+
 ## 사전 요구사항
 
 | 도구 | 최소 버전 | 설치 확인 |

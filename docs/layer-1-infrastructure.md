@@ -2,7 +2,7 @@
 
 ## 개요
 
-모든 상위 레이어가 의존하는 기반 인프라 레이어. Docker Compose로 관리되며, 데이터 저장소와 서비스 메타데이터를 제공한다.
+모든 상위 레이어가 의존하는 기반 인프라 레이어입니다. Docker Compose로 관리되며, 데이터 저장소와 서비스 메타데이터를 제공합니다.
 
 ## 서비스 구성
 
@@ -94,6 +94,7 @@ graph LR
 | `MINIO_CONSOLE_PORT` | `9001` | MinIO Console 포트 |
 | `MLFLOW_PORT` | `5000` | MLflow 서버 포트 |
 | `PREFECT_PORT` | `4200` | Prefect 서버 포트 |
+| `POSTGRES_MULTIPLE_DATABASES` | `mlflow,prefect` | 자동 생성할 데이터베이스 목록 |
 | `REDIS_PORT` | `6379` | Redis 포트 |
 
 ## 검증

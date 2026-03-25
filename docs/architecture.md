@@ -48,8 +48,8 @@ graph TB
     DVC --> MinIO
     Prefect --> PostgreSQL
     Prefect --> Redis
-    Evidently --> Prometheus
-    Prometheus --> Grafana
+    Prometheus -->|스크래핑| Evidently
+    Grafana -->|쿼리| Prometheus
     FastAPI --> MLflow
 ```
 
@@ -70,6 +70,8 @@ graph LR
 ```
 
 **규칙:** 상위 레이어는 하위 레이어만 참조 가능. 역방향 의존성 금지.
+
+> Layer 5(Serving)는 Layer 4(Orchestration)에 의존하지 않습니다. 모델 배포는 MLflow 모델 레지스트리를 통해 트리거됩니다.
 
 ## 서비스 포트 맵
 

@@ -43,5 +43,7 @@ make ps
 | 오케스트레이션 | Prefect |
 | 서빙 | FastAPI, Gunicorn, Nginx |
 | 모니터링 | Evidently, Prometheus, Grafana |
-| DB | PostgreSQL, MinIO, Redis |
+| 관계형 DB | PostgreSQL |
+| 오브젝트 스토리지 | MinIO |
+| 인메모리 스토어 | Redis |
 
