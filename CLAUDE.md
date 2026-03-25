@@ -148,6 +148,7 @@ MLOps-Pipeline/
 | `make ps` | Show service status |
 | `make logs SERVICE=mlflow` | Tail service logs |
 | `make seed` | Initialize MinIO buckets and MLflow experiments |
+| `make train` | Run training with default config |
 | `make lint` | Run Ruff linter |
 | `make format` | Run Ruff formatter |
 | `make test` | Run unit tests |
