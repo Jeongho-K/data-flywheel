@@ -70,9 +70,10 @@ services:
   # MLflow - Experiment tracking and model registry
   # ---------------------------------------------------------------------------
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v3.10.1
+    build:
+      context: ./docker/mlflow
+    image: mlops-pipeline/mlflow:v3.10.1
     command: >
-      mlflow server
       --host 0.0.0.0
       --port 5000
       --backend-store-uri postgresql://${POSTGRES_USER:-mlops}:${POSTGRES_PASSWORD:-mlops_secret}@postgres:5432/mlflow
@@ -102,6 +103,7 @@ services:
   # ---------------------------------------------------------------------------
   prefect-server:
     image: prefecthq/prefect:3.6.23-python3.11
+    command: prefect server start --host 0.0.0.0 --port 4200
     environment:
       # Requires asyncpg driver (included in prefecthq/prefect images with Python 3.11+)
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${POSTGRES_USER:-mlops}:${POSTGRES_PASSWORD:-mlops_secret}@postgres:5432/prefect
