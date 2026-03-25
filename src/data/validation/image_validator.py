@@ -73,12 +73,14 @@ def validate_image_dataset(
         if count > 0:
             issue_counts[issue_type] = count
 
-    total_issues = sum(issue_counts.values())
-    health_score = 1.0 - (total_issues / max(total_images, 1))
+    # Count unique images with at least one issue (avoids double-counting)
+    any_issue_col = [c for c in imagelab.issues.columns if c.startswith("is_") and c.endswith("_issue")]
+    images_with_issues = int(imagelab.issues[any_issue_col].any(axis=1).sum()) if any_issue_col else 0
+    health_score = 1.0 - (images_with_issues / max(total_images, 1))
 
     report = ValidationReport(
         total_images=total_images,
-        issues_found=total_issues,
+        issues_found=images_with_issues,
         issue_types=issue_counts,
         health_score=max(health_score, 0.0),
     )

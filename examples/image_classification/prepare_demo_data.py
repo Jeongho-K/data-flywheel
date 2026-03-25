@@ -91,8 +91,9 @@ def _save_subset(
         class_dir.mkdir(parents=True, exist_ok=True)
 
         img_path = class_dir / f"{class_name}_{count:04d}.png"
-        if isinstance(img, Image.Image):
-            img.save(img_path)
+        if not isinstance(img, Image.Image):
+            raise TypeError(f"Expected PIL Image, got {type(img)} at index {count}")
+        img.save(img_path)
 
         class_counts[label] = count + 1
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Initialize DVC and configure MinIO as remote storage.
-# Run once after `pip install -r requirements.txt` and `make up`.
+# Run once after `uv sync` and `make up`.
 
 set -eu
 
