@@ -1,4 +1,4 @@
-.PHONY: up down down-v ps logs seed lint format test verify install
+.PHONY: up down down-v ps logs seed lint format test verify install train
 
 # ---------------------------------------------------------------------------
 # Docker Compose
@@ -37,6 +37,12 @@ verify:
 # ---------------------------------------------------------------------------
 install:
 	uv sync
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+train:
+	uv run python -m src.training.train
 
 # ---------------------------------------------------------------------------
 # Code Quality

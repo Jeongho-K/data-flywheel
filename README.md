@@ -33,6 +33,7 @@ make ps
 | [설치 가이드](docs/setup-guide.md) | 사전 요구사항 및 설치/실행 방법 |
 | [Layer 1: Infrastructure](docs/layer-1-infrastructure.md) | 인프라 레이어 상세 |
 | [Layer 2: Data Pipeline](docs/layer-2-data-pipeline.md) | 데이터 파이프라인 상세 |
+| [Layer 3: Training](docs/layer-3-training.md) | 학습 파이프라인 상세 |
 
 ## 기술 스택
 
