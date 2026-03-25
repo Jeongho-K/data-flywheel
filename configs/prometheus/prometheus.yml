@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Phase 5: FastAPI serving metrics
+  # TODO: confirm actual compose service name when Phase 5 is implemented
+  # - job_name: "serving"
+  #   static_configs:
+  #     - targets: ["serving:8000"]
+
+  # Phase 6: Evidently monitoring metrics
+  # TODO: confirm actual compose service name when Phase 6 is implemented
+  # - job_name: "monitoring"
+  #   static_configs:
+  #     - targets: ["monitoring:8080"]
