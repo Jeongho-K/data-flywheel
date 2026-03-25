@@ -61,8 +61,12 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 ## Git Workflow
 
 - Phase-based branches → PR to main
-- PR review by subagents (code-reviewer, silent-failure-hunter, comment-analyzer, code-simplifier) before merge
-- Review → fix → re-review cycle until all pass
+- PR review cycle (모든 단계 통과 시 머지):
+  1. **코드 리뷰** — code-reviewer, silent-failure-hunter, comment-analyzer, code-simplifier 병렬 실행
+  2. 발견된 이슈 수정 → 재리뷰 (모든 리뷰어 통과할 때까지 반복)
+  3. **QC 테스트** — 실제 서비스를 올리고 유저 입장에서 E2E 동작 검증 (서비스 기동, API 호출, UI 접속 등)
+  4. QC 이슈 발견 시 수정 → 재 QC (통과할 때까지 반복)
+  5. 모든 리뷰 + QC 통과 → 머지
 
 ## Testing
 
