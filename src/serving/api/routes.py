@@ -113,12 +113,12 @@ async def model_reload(request: Request, body: ModelReloadRequest) -> ModelReloa
             device=current_state.device,
             image_size=config.image_size,
         )
-    except RuntimeError:
-        logger.exception("Model reload failed")
-        return ModelReloadResponse(
-            status="error",
-            message=f"Failed to load model '{target_name}' version '{target_version}'",
-        )
+    except Exception as exc:
+        logger.exception("Model reload failed for '%s' version '%s'", target_name, target_version)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load model '{target_name}' version '{target_version}'",
+        ) from exc
 
     request.app.state.model_state = new_state
 

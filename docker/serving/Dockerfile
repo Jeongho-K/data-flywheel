@@ -2,7 +2,7 @@
 # Phase 5: Model inference serving
 
 # --- Stage 1: Builder (install dependencies) ---
-FROM python:3.11-slim AS builder
+FROM python:3.11.12-slim AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN uv pip install --system --no-cache-dir \
     boto3>=1.35
 
 # --- Stage 2: Runtime ---
-FROM python:3.11-slim AS runtime
+FROM python:3.11.12-slim AS runtime
 
 WORKDIR /app
 

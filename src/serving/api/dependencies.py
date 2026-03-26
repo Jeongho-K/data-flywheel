@@ -90,13 +90,13 @@ def load_model_from_registry(
 
     try:
         model = mlflow.pytorch.load_model(model_uri)
+        model = model.to(device)
+        model.eval()
     except Exception as exc:
-        raise RuntimeError(f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}") from exc
+        raise RuntimeError(
+            f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}"
+        ) from exc
 
-    model = model.to(device)
-    model.eval()
-
-    # Detect num_classes from the final layer
     num_classes = _detect_num_classes(model)
 
     logger.info(

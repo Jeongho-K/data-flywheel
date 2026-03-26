@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class PredictionResponse(BaseModel):
     """Classification prediction result."""
 
-    predicted_class: int = Field(description="Predicted class index")
+    predicted_class: int = Field(ge=0, description="Predicted class index")
     class_name: str | None = Field(default=None, description="Human-readable class name if available")
-    confidence: float = Field(description="Confidence score for predicted class")
-    probabilities: list[float] = Field(description="Probability distribution over all classes")
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score for predicted class")
+    probabilities: list[float] = Field(min_length=1, description="Probability distribution over all classes")
 
 
 class ModelInfoResponse(BaseModel):
@@ -34,7 +36,7 @@ class ModelReloadRequest(BaseModel):
 class ModelReloadResponse(BaseModel):
     """Result of model reload operation."""
 
-    status: str = Field(description="'ok' or 'error'")
+    status: Literal["ok"] = Field(description="Always 'ok' for successful reload")
     message: str = Field(description="Human-readable result description")
     model_info: ModelInfoResponse | None = Field(default=None, description="New model info if reload succeeded")
 
@@ -42,5 +44,5 @@ class ModelReloadResponse(BaseModel):
 class HealthResponse(BaseModel):
     """Health check response."""
 
-    status: str = Field(default="ok")
+    status: Literal["ok"] = Field(default="ok")
     model_loaded: bool = Field(description="Whether a model is currently loaded")

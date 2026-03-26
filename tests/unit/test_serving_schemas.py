@@ -69,9 +69,9 @@ class TestModelReloadRequest:
 class TestModelReloadResponse:
     """Tests for ModelReloadResponse schema."""
 
-    def test_error_response(self) -> None:
-        """Error response should have no model_info."""
-        resp = ModelReloadResponse(status="error", message="Failed")
+    def test_success_without_info(self) -> None:
+        """Success response can have no model_info."""
+        resp = ModelReloadResponse(status="ok", message="Reloaded")
         assert resp.model_info is None
 
     def test_success_response(self) -> None:

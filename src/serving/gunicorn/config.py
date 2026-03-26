@@ -14,7 +14,7 @@ import os
 bind = os.getenv("GUNICORN_BIND", "0.0.0.0:8000")
 
 # Worker processes
-workers = int(os.getenv("GUNICORN_WORKERS", min(2 * multiprocessing.cpu_count() + 1, 4)))
+workers = int(os.getenv("GUNICORN_WORKERS", str(min(2 * multiprocessing.cpu_count() + 1, 4))))
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Timeouts

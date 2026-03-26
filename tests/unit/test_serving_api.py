@@ -202,7 +202,7 @@ class TestModelReloadEndpoint:
 
     @patch("src.serving.api.routes.load_model_from_registry", side_effect=RuntimeError("MLflow down"))
     def test_reload_failure(self, _mock_load) -> None:
-        """Should return error status on failure."""
+        """Should return 500 on failure."""
         config = ServingConfig()
         app = create_app(config, enable_lifespan=False)
         app.state.model_state = ModelState(
@@ -214,6 +214,5 @@ class TestModelReloadEndpoint:
 
         with TestClient(app, raise_server_exceptions=False) as client:
             resp = client.post("/model/reload", json={"model_name": "bad-model"})
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["status"] == "error"
+            assert resp.status_code == 500
+            assert "Failed to load" in resp.json()["detail"]

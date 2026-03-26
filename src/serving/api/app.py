@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     yield
 
-    # Cleanup
     logger.info("Shutting down, releasing model resources")
     app.state.model_state = ModelState()
 
