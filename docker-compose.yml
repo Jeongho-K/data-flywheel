@@ -82,6 +82,8 @@ services:
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # Allow Docker internal hostnames for API access (DNS rebinding protection)
+      MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow,mlflow:5000,localhost,localhost:*,127.0.0.1,127.0.0.1:*"
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     depends_on:

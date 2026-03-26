@@ -159,3 +159,5 @@ MLOps-Pipeline/
 - **DB 초기화 스크립트**: `scripts/create-multiple-databases.sh`는 볼륨이 비어있을 때만 실행. DB 추가 시 `make down-v` 필요
 - **학습 시 S3 인증**: 로컬에서 `make train` 실행 시 MinIO 인증 환경변수 필요:
   `MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin123`
+- **MLflow DNS Rebinding 방어**: MLflow 3.x는 Host 헤더 검증으로 DNS rebinding 공격 차단. Docker 내부 호스트명(`mlflow:5000`) 사용 시 `MLFLOW_SERVER_ALLOWED_HOSTS` 환경변수 필요
+- **`/model/reload` 멀티워커 제약**: Gunicorn 워커 N개 중 reload 요청을 받은 워커에만 적용. 전체 워커에 적용하려면 컨테이너 재시작 또는 `GUNICORN_WORKERS=1` 설정
