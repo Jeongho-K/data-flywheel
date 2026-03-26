@@ -27,6 +27,20 @@ class ModelState:
         """Check if a model is currently loaded."""
         return self.model is not None
 
+    def to_info_dict(self) -> dict[str, str | int]:
+        """Return model metadata as a dict suitable for ModelInfoResponse.
+
+        Returns:
+            Dict with model_name, model_version, num_classes, device, image_size.
+        """
+        return {
+            "model_name": self.model_name,
+            "model_version": self.model_version,
+            "num_classes": self.num_classes,
+            "device": str(self.device),
+            "image_size": self.image_size,
+        }
+
 
 def resolve_device(device_str: str) -> torch.device:
     """Resolve device string to torch.device for inference.
@@ -77,19 +91,20 @@ def load_model_from_registry(
     try:
         model = mlflow.pytorch.load_model(model_uri)
     except Exception as exc:
-        raise RuntimeError(
-            f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}"
-        ) from exc
+        raise RuntimeError(f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}") from exc
 
     model = model.to(device)
-    model.eval()  # noqa: S307 - PyTorch eval mode, not builtin eval()
+    model.eval()
 
     # Detect num_classes from the final layer
     num_classes = _detect_num_classes(model)
 
     logger.info(
         "Model loaded: %s (version=%s, num_classes=%d, device=%s)",
-        model_name, model_version, num_classes, device,
+        model_name,
+        model_version,
+        num_classes,
+        device,
     )
 
     return ModelState(
@@ -119,7 +134,7 @@ def _detect_num_classes(model: torch.nn.Module) -> int:
     if hasattr(model, "classifier"):
         classifier = model.classifier
         if isinstance(classifier, torch.nn.Sequential):
-            for layer in reversed(list(classifier)):
+            for layer in reversed(classifier):
                 if hasattr(layer, "out_features"):
                     return layer.out_features
 

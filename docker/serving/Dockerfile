@@ -37,11 +37,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application source
 COPY src/ ./src/
 
-# S3/MinIO credentials for MLflow artifact access
-ENV MLFLOW_S3_ENDPOINT_URL="http://minio:9000" \
-    AWS_ACCESS_KEY_ID="minioadmin" \
-    AWS_SECRET_ACCESS_KEY="minioadmin123"
-
 EXPOSE 8000
 
 # Use exec form for graceful shutdown support

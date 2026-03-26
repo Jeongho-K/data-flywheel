@@ -43,13 +43,7 @@ async def health(request: Request) -> HealthResponse:
 async def model_info(request: Request) -> ModelInfoResponse:
     """Return metadata about the currently loaded model."""
     ms = _get_model_state(request)
-    return ModelInfoResponse(
-        model_name=ms.model_name,
-        model_version=ms.model_version,
-        num_classes=ms.num_classes,
-        device=str(ms.device),
-        image_size=ms.image_size,
-    )
+    return ModelInfoResponse(**ms.to_info_dict())
 
 
 @router.post("/predict", response_model=PredictionResponse)
@@ -72,25 +66,24 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {exc}") from exc
 
-    # Preprocess
-    transform = get_eval_transforms(ms.image_size)
-    input_tensor: torch.Tensor = transform(image).unsqueeze(0).to(ms.device)
+    # Preprocess + Inference
+    try:
+        transform = get_eval_transforms(ms.image_size)
+        input_tensor: torch.Tensor = transform(image).unsqueeze(0).to(ms.device)
 
-    # Inference
-    with torch.no_grad():
-        output = ms.model(input_tensor)
-        probabilities = torch.nn.functional.softmax(output, dim=1)
+        with torch.no_grad():
+            output = ms.model(input_tensor)
+            probabilities = torch.nn.functional.softmax(output, dim=1)
 
-    probs = probabilities.squeeze(0).cpu().tolist()
-    predicted_idx = int(torch.argmax(probabilities, dim=1).item())
-    confidence = probs[predicted_idx]
+        probs = probabilities.squeeze(0).cpu().tolist()
+        predicted_idx = int(torch.argmax(probabilities, dim=1).item())
+        confidence = probs[predicted_idx]
+    except Exception as exc:
+        logger.exception("Inference failed for uploaded image")
+        raise HTTPException(status_code=500, detail=f"Inference error: {exc}") from exc
 
-    # Resolve class name if available
-    config = request.app.state.serving_config
-    class_names = config.get_class_names_list()
-    class_name = None
-    if class_names and predicted_idx < len(class_names):
-        class_name = class_names[predicted_idx]
+    class_names = request.app.state.serving_config.get_class_names_list()
+    class_name = class_names[predicted_idx] if class_names and predicted_idx < len(class_names) else None
 
     return PredictionResponse(
         predicted_class=predicted_idx,
@@ -132,11 +125,5 @@ async def model_reload(request: Request, body: ModelReloadRequest) -> ModelReloa
     return ModelReloadResponse(
         status="ok",
         message=f"Reloaded model '{target_name}' version '{target_version}'",
-        model_info=ModelInfoResponse(
-            model_name=new_state.model_name,
-            model_version=new_state.model_version,
-            num_classes=new_state.num_classes,
-            device=str(new_state.device),
-            image_size=new_state.image_size,
-        ),
+        model_info=ModelInfoResponse(**new_state.to_info_dict()),
     )

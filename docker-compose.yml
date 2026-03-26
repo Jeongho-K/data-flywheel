@@ -144,7 +144,7 @@ services:
     build:
       context: .
       dockerfile: docker/serving/Dockerfile
-    image: mlops-pipeline/api:latest
+    image: mlops-pipeline/api:0.1.0
     environment:
       SERVING_MODEL_NAME: ${SERVING_MODEL_NAME:-cv-classifier}
       SERVING_MODEL_VERSION: ${SERVING_MODEL_VERSION:-latest}

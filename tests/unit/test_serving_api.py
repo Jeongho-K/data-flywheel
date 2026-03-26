@@ -129,6 +129,27 @@ class TestPredictEndpoint:
             assert len(data["probabilities"]) == 3
             assert data["class_name"] in ("cat", "dog", "bird")
 
+    def test_predict_inference_error(self) -> None:
+        """Should return 500 when model inference fails."""
+        config = ServingConfig()
+        app = create_app(config, enable_lifespan=False)
+
+        broken_model = MagicMock()
+        broken_model.side_effect = RuntimeError("CUDA OOM")
+        app.state.model_state = ModelState(
+            model=broken_model,
+            model_name="broken",
+            model_version="1",
+            num_classes=3,
+            device=torch.device("cpu"),
+            image_size=224,
+        )
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            resp = client.post("/predict", files={"file": ("test.png", _create_test_image())})
+            assert resp.status_code == 500
+            assert "Inference error" in resp.json()["detail"]
+
     def test_predict_invalid_image(self) -> None:
         """Should return 400 for non-image data."""
         config = ServingConfig()
