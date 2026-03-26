@@ -43,7 +43,8 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 | MLflow | `docker/mlflow/Dockerfile` (base: `ghcr.io/mlflow/mlflow:v3.10.1`) | Custom build: +psycopg2-binary +boto3 |
 | Prefect | `prefecthq/prefect:3.6.23-python3.11` | Requires explicit `command` |
 | Redis | `redis:7.4-alpine` | |
-| Nginx | `nginx:1.28.2-alpine` | Phase 5 |
+| Nginx | `nginx:1.28.1-alpine` | Phase 5 |
+| FastAPI | `fastapi>=0.115` + `uvicorn>=0.30` + `gunicorn>=22.0` | Phase 5 |
 | Prometheus | `prom/prometheus:v3.10.0` | Phase 6 |
 | Grafana | `grafana/grafana-oss:12.4.1` | Phase 6 |
 | Python | 3.11.x | |
@@ -75,18 +76,6 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 - **Commit messages**: English, conventional commits (`feat:`, `fix:`, `docs:`, `infra:`, `test:`, `refactor:`)
 - **Branches**: `feature/phase-{N}-{name}`, `fix/{description}`
 
-## Git Workflow
-
-- Phase-based branches → PR to main
-- PR review cycle (모든 단계 통과 시 머지):
-  1. **코드 리뷰** — 7인 서브에이전트 병렬 실행:
-     - code-reviewer, silent-failure-hunter, comment-analyzer, code-simplifier
-     - type-design-analyzer, pr-test-analyzer, feature-dev:code-reviewer
-     - superpowers:code-reviewer, feature-dev:code-explorer
-  2. 발견된 이슈 수정 → 재리뷰 (모든 리뷰어 통과할 때까지 반복)
-  3. **QC 테스트** — 실제 서비스를 올리고 유저 입장에서 E2E 동작 검증 (서비스 기동, API 호출, UI 접속 등)
-  4. QC 이슈 발견 시 수정 → 재 QC (통과할 때까지 반복)
-  5. 모든 리뷰 + QC 통과 → 머지
 
 ## Testing
 
@@ -170,3 +159,5 @@ MLOps-Pipeline/
 - **DB 초기화 스크립트**: `scripts/create-multiple-databases.sh`는 볼륨이 비어있을 때만 실행. DB 추가 시 `make down-v` 필요
 - **학습 시 S3 인증**: 로컬에서 `make train` 실행 시 MinIO 인증 환경변수 필요:
   `MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin123`
+- **MLflow DNS Rebinding 방어**: MLflow 3.x는 Host 헤더 검증으로 DNS rebinding 공격 차단. Docker 내부 호스트명(`mlflow:5000`) 사용 시 `MLFLOW_SERVER_ALLOWED_HOSTS` 환경변수 필요
+- **`/model/reload` 멀티워커 제약**: Gunicorn 워커 N개 중 reload 요청을 받은 워커에만 적용. 전체 워커에 적용하려면 컨테이너 재시작 또는 `GUNICORN_WORKERS=1` 설정
