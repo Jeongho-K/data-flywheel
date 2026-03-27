@@ -11,6 +11,7 @@ from fastapi import FastAPI
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+from src.monitoring.metrics import setup_metrics
 from src.serving.api.config import ServingConfig
 from src.serving.api.dependencies import (
     ModelState,
@@ -80,5 +81,6 @@ def create_app(config: ServingConfig | None = None, *, enable_lifespan: bool = T
     app.state.model_state = ModelState()
 
     app.include_router(router)
+    setup_metrics(app)
 
     return app
