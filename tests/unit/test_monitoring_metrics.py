@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 
 from src.monitoring.metrics import (
     PREDICTION_CLASS_COUNTER,
-    PREDICTION_CONFIDENCE_HISTOGRAM,
     record_prediction,
     setup_metrics,
 )
@@ -35,13 +34,18 @@ class TestRecordPrediction:
 
     def test_records_class_and_confidence(self) -> None:
         """Should increment counter and observe confidence."""
-        before_count = PREDICTION_CLASS_COUNTER.labels(predicted_class="2").collect()[0].samples
+        before_samples = PREDICTION_CLASS_COUNTER.labels(predicted_class="2").collect()[0].samples
+        before_value = sum(s.value for s in before_samples if s.name.endswith("_total"))
         record_prediction(predicted_class=2, confidence=0.95)
-        after_count = PREDICTION_CLASS_COUNTER.labels(predicted_class="2").collect()[0].samples
-        assert len(after_count) >= 1
+        after_samples = PREDICTION_CLASS_COUNTER.labels(predicted_class="2").collect()[0].samples
+        after_value = sum(s.value for s in after_samples if s.name.endswith("_total"))
+        assert after_value == before_value + 1
 
     def test_records_with_class_name(self) -> None:
         """Should use class name as label when provided."""
+        before_samples = PREDICTION_CLASS_COUNTER.labels(predicted_class="cat").collect()[0].samples
+        before_value = sum(s.value for s in before_samples if s.name.endswith("_total"))
         record_prediction(predicted_class=0, confidence=0.8, class_name="cat")
-        samples = PREDICTION_CLASS_COUNTER.labels(predicted_class="cat").collect()[0].samples
-        assert len(samples) >= 1
+        after_samples = PREDICTION_CLASS_COUNTER.labels(predicted_class="cat").collect()[0].samples
+        after_value = sum(s.value for s in after_samples if s.name.endswith("_total"))
+        assert after_value == before_value + 1
