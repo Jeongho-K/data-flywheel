@@ -50,12 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     app.state.model_state = model_state
 
-    s3_endpoint = os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://minio:9000")
     app.state.prediction_logger = PredictionLogger(
-        s3_endpoint=s3_endpoint,
-        bucket="prediction-logs",
-        access_key=os.getenv("AWS_ACCESS_KEY_ID", "minioadmin"),
-        secret_key=os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin123"),
+        s3_endpoint=config.s3_endpoint,
+        bucket=config.prediction_logs_bucket,
+        access_key=os.environ["AWS_ACCESS_KEY_ID"],
+        secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
     )
 
     yield

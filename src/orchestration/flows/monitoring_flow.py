@@ -7,6 +7,7 @@ run drift detection → upload drift report.
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
 from datetime import date, timedelta
 from typing import Any
@@ -15,6 +16,7 @@ import boto3
 import pandas as pd
 from prefect import flow, task
 
+from src.monitoring.evidently.config import DriftConfig
 from src.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
     detect_drift,
@@ -185,32 +187,35 @@ def upload_drift_report(
     today = date.today()
     s3_key = f"{today.isoformat()}/drift-report.html"
 
-    with tempfile.NamedTemporaryFile(suffix=".html", delete=True) as tmp:
-        tmp_path = tmp.name
-
-    save_drift_report_html(reference, current, tmp_path)
-    client.upload_file(tmp_path, bucket, s3_key)
-    logger.info("Drift report uploaded to s3://%s/%s", bucket, s3_key)
+    fd, tmp_path = tempfile.mkstemp(suffix=".html")
+    os.close(fd)
+    try:
+        save_drift_report_html(reference, current, tmp_path)
+        client.upload_file(tmp_path, bucket, s3_key)
+        logger.info("Drift report uploaded to s3://%s/%s", bucket, s3_key)
+    finally:
+        os.unlink(tmp_path)
     return s3_key
 
 
 @flow(
     name="monitoring-pipeline",
-    log_prints=True,
     retries=0,
     description="Daily drift monitoring: fetch logs → detect drift → upload report",
 )
 def monitoring_pipeline(
-    s3_endpoint: str = "http://minio:9000",
-    s3_access_key: str = "minioadmin",
-    s3_secret_key: str = "minioadmin123",
-    prediction_logs_bucket: str = "prediction-logs",
-    drift_reports_bucket: str = "drift-reports",
-    reference_path: str = "reference/baseline.jsonl",
-    lookback_days: int = 1,
-    pushgateway_url: str = "http://pushgateway:9091",
+    s3_endpoint: str | None = None,
+    s3_access_key: str | None = None,
+    s3_secret_key: str | None = None,
+    prediction_logs_bucket: str | None = None,
+    drift_reports_bucket: str | None = None,
+    reference_path: str | None = None,
+    lookback_days: int | None = None,
+    pushgateway_url: str | None = None,
 ) -> dict[str, Any]:
     """Run the full drift monitoring pipeline.
+
+    All parameters default to values from DriftConfig (DRIFT_ env prefix).
 
     Steps:
         1. Fetch prediction logs from S3 for the lookback window.
@@ -233,6 +238,16 @@ def monitoring_pipeline(
         Dictionary with drift detection results and the uploaded report S3 key.
         Returns ``{"status": "skipped", "reason": ...}`` if data is insufficient.
     """
+    cfg = DriftConfig()
+    s3_endpoint = s3_endpoint or cfg.s3_endpoint
+    s3_access_key = s3_access_key or cfg.s3_access_key
+    s3_secret_key = s3_secret_key or cfg.s3_secret_key
+    prediction_logs_bucket = prediction_logs_bucket or cfg.prediction_logs_bucket
+    drift_reports_bucket = drift_reports_bucket or cfg.drift_reports_bucket
+    reference_path = reference_path or cfg.reference_path
+    lookback_days = lookback_days or cfg.lookback_days
+    pushgateway_url = pushgateway_url or cfg.pushgateway_url
+
     # Step 1: Fetch prediction logs
     current_df = fetch_prediction_logs(
         s3_endpoint=s3_endpoint,

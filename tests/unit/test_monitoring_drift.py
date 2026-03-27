@@ -23,12 +23,14 @@ from src.monitoring.evidently.drift_detector import (
 class TestDriftConfig:
     """Tests for DriftConfig defaults and environment variable overrides."""
 
-    def test_defaults(self) -> None:
-        """DriftConfig provides expected default values."""
+    def test_defaults(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """DriftConfig provides expected default values (credentials from env)."""
+        monkeypatch.setenv("DRIFT_S3_ACCESS_KEY", "testkey")
+        monkeypatch.setenv("DRIFT_S3_SECRET_KEY", "testsecret")
         cfg = DriftConfig()
         assert cfg.s3_endpoint == "http://minio:9000"
-        assert cfg.s3_access_key == "minioadmin"
-        assert cfg.s3_secret_key == "minioadmin123"
+        assert cfg.s3_access_key == "testkey"
+        assert cfg.s3_secret_key == "testsecret"
         assert cfg.prediction_logs_bucket == "prediction-logs"
         assert cfg.drift_reports_bucket == "drift-reports"
         assert cfg.reference_path == "reference/baseline.jsonl"
@@ -37,6 +39,8 @@ class TestDriftConfig:
 
     def test_override_via_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Environment variables with DRIFT_ prefix override defaults."""
+        monkeypatch.setenv("DRIFT_S3_ACCESS_KEY", "testkey")
+        monkeypatch.setenv("DRIFT_S3_SECRET_KEY", "testsecret")
         monkeypatch.setenv("DRIFT_S3_ENDPOINT", "http://custom-minio:9000")
         monkeypatch.setenv("DRIFT_LOOKBACK_DAYS", "7")
         monkeypatch.setenv("DRIFT_PUSHGATEWAY_URL", "http://my-gateway:9091")
@@ -45,8 +49,7 @@ class TestDriftConfig:
         assert cfg.s3_endpoint == "http://custom-minio:9000"
         assert cfg.lookback_days == 7
         assert cfg.pushgateway_url == "http://my-gateway:9091"
-        # Non-overridden values remain at default
-        assert cfg.s3_access_key == "minioadmin"
+        assert cfg.s3_access_key == "testkey"
 
 
 class TestBuildDataframe:

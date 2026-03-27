@@ -16,8 +16,8 @@ class DriftConfig(BaseSettings):
 
     # S3 / MinIO
     s3_endpoint: str = Field(default="http://minio:9000", description="MinIO endpoint URL")
-    s3_access_key: str = Field(default="minioadmin", description="S3 access key")
-    s3_secret_key: str = Field(default="minioadmin123", description="S3 secret key")
+    s3_access_key: str = Field(description="S3 access key (env: DRIFT_S3_ACCESS_KEY)")
+    s3_secret_key: str = Field(description="S3 secret key (env: DRIFT_S3_SECRET_KEY)")
 
     # Buckets
     prediction_logs_bucket: str = Field(default="prediction-logs", description="Bucket for prediction logs")
