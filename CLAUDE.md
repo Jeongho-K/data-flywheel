@@ -121,7 +121,7 @@ MLOps-Pipeline/
 ├── pyproject.toml            # Python tooling config
 ├── docker/                   # Dockerfiles per service
 ├── src/                      # Source code (by layer)
-│   ├── data/                 # Layer 2: DVC, validation, preprocessing
+│   ├── data/                 # Layer 2: validation, preprocessing
 │   ├── training/             # Layer 3: models, trainers, configs
 │   ├── serving/              # Layer 5: FastAPI, nginx, gunicorn
 │   ├── orchestration/        # Layer 4: Prefect flows, tasks
