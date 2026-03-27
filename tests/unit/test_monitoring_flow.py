@@ -33,12 +33,8 @@ class TestFetchPredictionLogs:
         ]
 
         mock_client = MagicMock()
-        mock_client.list_objects_v2.return_value = {
-            "Contents": [{"Key": "2026-03-27/logs.jsonl"}]
-        }
-        mock_client.get_object.return_value = {
-            "Body": BytesIO(_jsonl(*records))
-        }
+        mock_client.list_objects_v2.return_value = {"Contents": [{"Key": "2026-03-27/logs.jsonl"}]}
+        mock_client.get_object.return_value = {"Body": BytesIO(_jsonl(*records))}
 
         with patch(
             "src.orchestration.flows.monitoring_flow.boto3.client",
@@ -116,9 +112,7 @@ class TestFetchPredictionLogs:
             ]
         }
         record = {"predicted_class": "cat", "confidence": 0.9}
-        mock_client.get_object.return_value = {
-            "Body": BytesIO(_jsonl(record))
-        }
+        mock_client.get_object.return_value = {"Body": BytesIO(_jsonl(record))}
 
         with patch(
             "src.orchestration.flows.monitoring_flow.boto3.client",
@@ -149,9 +143,7 @@ class TestFetchReferenceData:
         ]
 
         mock_client = MagicMock()
-        mock_client.get_object.return_value = {
-            "Body": BytesIO(_jsonl(*records))
-        }
+        mock_client.get_object.return_value = {"Body": BytesIO(_jsonl(*records))}
 
         with patch(
             "src.orchestration.flows.monitoring_flow.boto3.client",
@@ -168,9 +160,7 @@ class TestFetchReferenceData:
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 3
         assert "predicted_class" in df.columns
-        mock_client.get_object.assert_called_once_with(
-            Bucket="prediction-logs", Key="reference/baseline.jsonl"
-        )
+        mock_client.get_object.assert_called_once_with(Bucket="prediction-logs", Key="reference/baseline.jsonl")
 
     def test_returns_empty_dataframe_for_empty_file(self) -> None:
         """Returns an empty DataFrame when the reference file is empty."""
@@ -218,9 +208,7 @@ class TestRunDriftDetection:
                 "src.orchestration.flows.monitoring_flow.detect_drift",
                 return_value=mock_result,
             ) as mock_detect,
-            patch(
-                "src.orchestration.flows.monitoring_flow.push_drift_metrics"
-            ) as mock_push,
+            patch("src.orchestration.flows.monitoring_flow.push_drift_metrics") as mock_push,
         ):
             result = run_drift_detection.fn(
                 reference=self._make_df(),
@@ -283,9 +271,7 @@ class TestUploadDriftReport:
                 "src.orchestration.flows.monitoring_flow.boto3.client",
                 return_value=mock_client,
             ),
-            patch(
-                "src.orchestration.flows.monitoring_flow.save_drift_report_html"
-            ) as mock_save,
+            patch("src.orchestration.flows.monitoring_flow.save_drift_report_html") as mock_save,
         ):
             upload_drift_report.fn(
                 reference=self._make_df(),
