@@ -6,6 +6,7 @@
 graph TB
     subgraph "Layer 6: Monitoring"
         Evidently[Evidently<br/>드리프트 감지]
+        Pushgateway[Pushgateway<br/>배치 메트릭 수신]
         Prometheus[Prometheus<br/>메트릭 수집]
         Grafana[Grafana<br/>대시보드/알림]
     end
@@ -48,7 +49,10 @@ graph TB
     DVC --> MinIO
     Prefect --> PostgreSQL
     Prefect --> Redis
-    Prometheus -->|스크래핑| Evidently
+    Prometheus -->|스크래핑| FastAPI
+    Prometheus -->|스크래핑| Pushgateway
+    Evidently -->|푸시| Pushgateway
+    FastAPI -->|예측 로그| MinIO
     Grafana -->|쿼리| Prometheus
     FastAPI --> MLflow
 ```
@@ -86,6 +90,7 @@ graph LR
 | FastAPI | 8000 | 추론 API (Phase 5) |
 | Nginx | 80 | 리버스 프록시 (Phase 5) |
 | Prometheus | 9090 | 메트릭 수집 (Phase 6) |
+| Pushgateway | 9091 | 배치 메트릭 수신 (Phase 6) |
 | Grafana | 3000 | 대시보드 (Phase 6) |
 
 ## 데이터 흐름
@@ -104,12 +109,12 @@ graph LR
 
 ## 구현 로드맵
 
-| Phase | 레이어 | 핵심 구현 |
-|-------|--------|----------|
-| 0 | 프로젝트 기반 | CLAUDE.md, docs, Makefile, pyproject.toml |
-| 1 | Infrastructure | Docker Compose, PostgreSQL, MinIO, MLflow Server, Prefect Server, Redis |
-| 2 | Data Pipeline | DVC (MinIO 리모트), CleanLab/CleanVision, 데모 데이터셋 |
-| 3 | Training | PyTorch 이미지 분류, MLflow 실험 트래킹, 모델 레지스트리 |
-| 4 | Orchestration | Prefect 워크플로우, 스케줄링, 에러 핸들링 |
-| 5 | Serving | FastAPI, Gunicorn/Uvicorn, Nginx, 모델 버전 라우팅 |
-| 6 | Monitoring | Evidently 드리프트, Prometheus 메트릭, Grafana 대시보드 |
+| Phase | 레이어 | 핵심 구현 | 상태 |
+|-------|--------|----------|------|
+| 0 | 프로젝트 기반 | CLAUDE.md, docs, Makefile, pyproject.toml | 완료 |
+| 1 | Infrastructure | Docker Compose, PostgreSQL, MinIO, MLflow Server, Prefect Server, Redis | 완료 |
+| 2 | Data Pipeline | DVC (MinIO 리모트), CleanLab/CleanVision, 데모 데이터셋 | 완료 |
+| 3 | Training | PyTorch 이미지 분류, MLflow 실험 트래킹, 모델 레지스트리 | 완료 |
+| 4 | Orchestration | Prefect 워크플로우, 스케줄링, 에러 핸들링 | 완료 |
+| 5 | Serving | FastAPI, Gunicorn/Uvicorn, Nginx, 모델 버전 라우팅 | 완료 |
+| 6 | Monitoring | Evidently 드리프트, Prometheus 메트릭, Grafana 대시보드 | 완료 |
