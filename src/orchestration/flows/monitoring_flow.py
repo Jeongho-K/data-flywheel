@@ -144,11 +144,6 @@ def run_drift_detection(
         drift_detected=result["drift_detected"],
         drift_score=result["drift_score"],
     )
-    logger.info(
-        "Drift detection complete: drift_detected=%s drift_score=%.4f",
-        result["drift_detected"],
-        result["drift_score"],
-    )
     return result
 
 
@@ -273,15 +268,13 @@ def monitoring_pipeline(
         return {"status": "skipped", "reason": "empty reference data"}
 
     # Step 3: Filter to common columns
-    common_cols = ["predicted_class", "confidence"]
-    current_cols = [c for c in common_cols if c in current_df.columns]
-    reference_cols = [c for c in common_cols if c in reference_df.columns]
-    shared_cols = [c for c in current_cols if c in reference_cols]
+    desired_cols = {"predicted_class", "confidence"}
+    shared_cols = sorted(desired_cols & set(current_df.columns) & set(reference_df.columns))
 
     if not shared_cols:
         logger.warning(
             "No shared columns (%s) between reference and current data; skipping.",
-            common_cols,
+            desired_cols,
         )
         return {"status": "skipped", "reason": "no shared columns"}
 
