@@ -60,8 +60,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     logger.info("Shutting down, releasing model resources")
-    if hasattr(app.state, "prediction_logger"):
-        app.state.prediction_logger.flush()
+    app.state.prediction_logger.flush()
     app.state.model_state = ModelState()
 
 

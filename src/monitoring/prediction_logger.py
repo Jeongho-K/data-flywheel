@@ -113,11 +113,9 @@ class PredictionLogger:
             probabilities=probabilities,
         )
 
-        should_flush = False
         with self._lock:
             self._buffer.append(entry)
-            if len(self._buffer) >= self._flush_threshold:
-                should_flush = True
+            should_flush = len(self._buffer) >= self._flush_threshold
 
         if should_flush:
             self.flush()
