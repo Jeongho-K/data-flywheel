@@ -35,6 +35,8 @@ make ps
 | [Layer 2: Data Pipeline](docs/layer-2-data-pipeline.md) | 데이터 파이프라인 상세 |
 | [Layer 3: Training](docs/layer-3-training.md) | 학습 파이프라인 상세 |
 | [Layer 4: Orchestration](docs/layer-4-orchestration.md) | 오케스트레이션 상세 |
+| [Layer 5: Serving](docs/layer-5-serving.md) | 서빙 레이어 상세 |
+| [Layer 6: Monitoring](docs/layer-6-monitoring.md) | 모니터링 레이어 상세 |
 
 ## 기술 스택
 
