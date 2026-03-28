@@ -30,7 +30,9 @@
 
   <!-- Nginx -->
   <rect x="200" y="112" width="130" height="72" rx="12" fill="#f0fdf4" stroke="#009639" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="212" y="122" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDA5NjM5IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+TkdJTlg8L3RpdGxlPjxwYXRoIGQ9Ik0xMiAwTDEuNjA1IDZ2MTJMMTIgMjRsMTAuMzk1LTZWNkwxMiAwem02IDE2LjU5YzAgLjcwNS0uNjQ2IDEuMjktMS41MjkgMS4yOS0uNjMxIDAtMS4zNTEtLjI1NS0xLjgwMS0uODFsLTYtNy4xNDF2Ni42NmMwIC43MjEtLjU3IDEuMjktMS4yNzQgMS4yOUg3LjMyYy0uNzIxIDAtMS4yOS0uNi0xLjI5LTEuMjlWNy40MWMwLS43MDUuNjMtMS4yOSAxLjUtMS4yOS42NDYgMCAxLjM4LjI1NSAxLjgzLjgxbDUuOTcgNy4xNDFWNy40MWMwLS43MjEuNi0xLjI5IDEuMjktMS4yOWguMDc1Yy43MiAwIDEuMjkuNiAxLjI5IDEuMjl2OS4xOEgxOHoiLz48L3N2Zz4="/>
+  <g transform="translate(212.0,122.0) scale(1.0000,1.0000)">
+    <path d="M12 0L1.605 6v12L12 24l10.395-6V6L12 0zm6 16.59c0 .705-.646 1.29-1.529 1.29-.631 0-1.351-.255-1.801-.81l-6-7.141v6.66c0 .721-.57 1.29-1.274 1.29H7.32c-.721 0-1.29-.6-1.29-1.29V7.41c0-.705.63-1.29 1.5-1.29.646 0 1.38.255 1.83.81l5.97 7.141V7.41c0-.721.6-1.29 1.29-1.29h.075c.72 0 1.29.6 1.29 1.29v9.18H18z" fill="#009639"/>
+  </g>
   <text x="240" y="134" font-size="11" font-weight="700" fill="#166534">Nginx</text>
   <text x="265" y="155" text-anchor="middle" font-size="9" fill="#475569">:80</text>
   <text x="265" y="170" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic">Reverse Proxy</text>
@@ -41,7 +43,9 @@
 
   <!-- Gunicorn -->
   <rect x="400" y="112" width="140" height="72" rx="12" fill="#f0fdf4" stroke="#499848" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="412" y="122" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjNDk5ODQ4IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+R3VuaWNvcm48L3RpdGxlPjxwYXRoIGQ9Ik0xMC4xNDUgMjAuMDE0Yy0uMjY2LS4wODUtLjI2Ny0uMTIyLS4wMjItLjg2NS4yNDQtLjc0My4xMzItMS40MzItLjMyLTEuOTc0LS42MTctLjczNy0uOTE0LTEuMzY2LTEuMDA5LTIuMTM1LS4wOC0uNjYtLjEwNy0uNzEzLS4zNzYtLjc2NC0uMTgtLjAzNS0uNDMuMDM0LTEuMDIzLjI4MS0uODY0LjM2LTEuMDcuNTItMS4yNzMuOTgtLjEwOC4yNDItLjEyLjM4Ny0uMDYuNjY3eiIvPjwvc3ZnPg=="/>
+  <g transform="translate(412.0,122.0) scale(1.0000,1.0000)">
+    <path d="M10.145 20.014c-.266-.085-.267-.122-.022-.865.244-.743.132-1.432-.32-1.974-.617-.737-.914-1.366-1.009-2.135-.08-.66-.107-.713-.376-.764-.18-.035-.43.034-1.023.281-.864.36-1.07.52-1.273.98-.108.242-.12.387-.06.667z" fill="#499848"/>
+  </g>
   <text x="440" y="134" font-size="11" font-weight="700" fill="#166534">Gunicorn</text>
   <text x="470" y="155" text-anchor="middle" font-size="9" fill="#475569">:8000</text>
   <text x="470" y="170" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic">Process Manager</text>
@@ -52,7 +56,9 @@
 
   <!-- FastAPI + Uvicorn -->
   <rect x="610" y="100" width="170" height="96" rx="12" fill="#ecfeff" stroke="#009688" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="622" y="108" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDA5Njg4IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+RmFzdEFQSTwvdGl0bGU+PHBhdGggZD0iTTEyIC4wMzg3QzUuMzcyOS4wMzg0LjAwMDMgNS4zOTMxIDAgMTEuOTk4OGMtLjAwMSA2LjYwNjYgNS4zNzIgMTEuOTYyOCAxMiAxMS45NjI1IDYuNjI4LjAwMDMgMTIuMDAxLTUuMzU1OSAxMi0xMS45NjI1LS4wMDAzLTYuNjA1Ny01LjM3MjktMTEuOTYwNC0xMi0xMS45Nm0tLjgyOSA1LjQxNTNoNy41NWwtNy41ODA1IDUuMzI4NGg1LjE4MjhMNS4yNzkgMTguNTQzNnEyLjk0NjYtNi41NDQ0IDUuODkyLTEzLjA4OTYiLz48L3N2Zz4="/>
+  <g transform="translate(622.0,108.0) scale(1.0000,1.0000)">
+    <path d="M12 .0387C5.3729.0384.0003 5.3931 0 11.9988c-.001 6.6066 5.372 11.9628 12 11.9625 6.628.0003 12.001-5.3559 12-11.9625-.0003-6.6057-5.3729-11.9604-12-11.96m-.829 5.4153h7.55l-7.5805 5.3284h5.1828L5.279 18.5436q2.9466-6.5444 5.892-13.0896" fill="#009688"/>
+  </g>
   <text x="650" y="120" font-size="11" font-weight="700" fill="#0e7490">FastAPI + Uvicorn</text>
   <text x="695" y="148" text-anchor="middle" font-size="9" fill="#475569">Serve Predictions</text>
   <text x="695" y="163" text-anchor="middle" font-size="9" fill="#475569">Workers x N</text>
@@ -62,7 +68,9 @@
 
   <!-- MLflow (top) -->
   <rect x="620" y="14" width="120" height="56" rx="10" fill="#eff6ff" stroke="#0194E2" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="632" y="22" width="22" height="22" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDE5NEUyIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+TUxmbG93PC90aXRsZT48cGF0aCBkPSJNMTEuODgzLjAwMmExMi4wNDQgMTIuMDQ0IDAgMCAwLTkuMzI2IDE5LjQ2M2wzLjY2OC0yLjY5NEE3LjU3MyA3LjU3MyAwIDAgMSAxMi4wNDMgNC40NXYyLjg2N2w2LjkwOC01LjE0QTEyLjAxMiAxMi4wMTIgMCAwIDAgMTEuODgzLjAwMnptOS41NjIgNC41MzNMMTcuNzc3IDcuMjNhNy41NzMgNy41NzMgMCAwIDEtNS44MTggMTIuMzIydi0yLjg2N2wtNi45MDggNS4xNGExMi4wNDYgMTIuMDQ2IDAgMCAwIDE2LjM5NC0xNy4yOXoiLz48L3N2Zz4="/>
+  <g transform="translate(632.0,22.0) scale(0.9167,0.9167)">
+    <path d="M11.883.002a12.044 12.044 0 0 0-9.326 19.463l3.668-2.694A7.573 7.573 0 0 1 12.043 4.45v2.867l6.908-5.14A12.012 12.012 0 0 0 11.883.002zm9.562 4.533L17.777 7.23a7.573 7.573 0 0 1-5.818 12.322v-2.867l-6.908 5.14a12.046 12.046 0 0 0 16.394-17.29z" fill="#0194E2"/>
+  </g>
   <text x="658" y="36" font-size="11" font-weight="700" fill="#0194E2">MLflow</text>
   <text x="680" y="53" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic">Model Registry</text>
 
@@ -72,7 +80,9 @@
 
   <!-- MinIO (bottom-left) -->
   <rect x="560" y="238" width="120" height="56" rx="10" fill="#fef3e2" stroke="#C72E49" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="572" y="246" width="22" height="22" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjQzcyRTQ5IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+TWluSU88L3RpdGxlPjxwYXRoIGQ9Ik0xMy4yMDcyLjAwNmMtLjYyMTYtLjA0NzgtMS4yLjE5NDMtMS42MjExLjU4MmEyLjE1IDIuMTUgMCAwIDAtLjA5MzggMy4wMzUybDMuNDA4MiAzLjU1MDdhMy4wNDIgMy4wNDIgMCAwIDEtLjY2NCA0LjY4NzVsLS40NjMuMjM4M1Y3LjI4NTNhMTUuNDE5OCAxNS40MTk4IDAgMCAwLTguMDE3NCAxMC40ODYydi4wMTc2bDYuNTQ4Ny0zLjMyODF2Ny42MjFMMTMuNzc5NCAyNFYxMy42ODE3bC44OTY1LS40NjI5YTQuNDQzMiA0LjQ0MzIgMCAwIDAgMS4yMjA3LTcuMDI5MmwtMy4zNzEtMy41MjU0YS43NDg5Ljc0ODkgMCAwIDEgLjAzNy0xLjA1NDcuNzUyMi43NTIyIDAgMCAxIDEuMDU2Ny4wMzcxbC40NjY4LjQ4NjN6Ii8+PC9zdmc+"/>
+  <g transform="translate(572.0,246.0) scale(0.9167,0.9167)">
+    <path d="M13.2072.006c-.6216-.0478-1.2.1943-1.6211.582a2.15 2.15 0 0 0-.0938 3.0352l3.4082 3.5507a3.042 3.042 0 0 1-.664 4.6875l-.463.2383V7.2853a15.4198 15.4198 0 0 0-8.0174 10.4862v.0176l6.5487-3.3281v7.621L13.7794 24V13.6817l.8965-.4629a4.4432 4.4432 0 0 0 1.2207-7.0292l-3.371-3.5254a.7489.7489 0 0 1 .037-1.0547.7522.7522 0 0 1 1.0567.0371l.4668.4863z" fill="#C72E49"/>
+  </g>
   <text x="598" y="260" font-size="11" font-weight="700" fill="#C72E49">MinIO</text>
   <text x="620" y="278" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic">Object Storage</text>
 
@@ -82,7 +92,9 @@
 
   <!-- Prometheus (bottom-right) -->
   <rect x="740" y="238" width="130" height="56" rx="10" fill="#fff7ed" stroke="#E6522C" stroke-width="1.5" filter="url(#shadow)"/>
-  <image x="752" y="246" width="22" height="22" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRTY1MjJDIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UHJvbWV0aGV1czwvdGl0bGU+PHBhdGggZD0iTTEyIDBDNS4zNzMgMCAwIDUuMzcyIDAgMTJjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMnMxMi01LjM3MyAxMi0xMmMwLTYuNjI4LTUuMzczLTEyLTEyLTEyem0wIDIyLjQ2Yy0xLjg4NSAwLTMuNDE0LTEuMjYtMy40MTQtMi44MTRoNi44MjhjMCAxLjU1My0xLjUyOCAyLjgxMy0zLjQxNCAyLjgxM3ptNS42NC0zLjc0NUg2LjM2di0yLjA0NmgxMS4yOHYyLjA0NnptLS4wNC0zLjA5OEg2LjM5MWMtLjAzNy0uMDQzLS4wNzUtLjA4Ni0uMTExLS4xMy0xLjE1NS0xLjQwMS0xLjQyNy0yLjEzMy0xLjY5LTIuODc5eiIvPjwvc3ZnPg=="/>
+  <g transform="translate(752.0,246.0) scale(0.9167,0.9167)">
+    <path d="M12 0C5.373 0 0 5.372 0 12c0 6.627 5.373 12 12 12s12-5.373 12-12c0-6.628-5.373-12-12-12zm0 22.46c-1.885 0-3.414-1.26-3.414-2.814h6.828c0 1.553-1.528 2.813-3.414 2.813zm5.64-3.745H6.36v-2.046h11.28v2.046zm-.04-3.098H6.391c-.037-.043-.075-.086-.111-.13-1.155-1.401-1.427-2.133-1.69-2.879z" fill="#E6522C"/>
+  </g>
   <text x="778" y="260" font-size="11" font-weight="700" fill="#E6522C">Prometheus</text>
   <text x="805" y="278" text-anchor="middle" font-size="8" fill="#64748b" font-style="italic">Metrics Collector</text>
 

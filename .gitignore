@@ -244,4 +244,5 @@ package.json
 *.drawio
 
 # Superpowers brainstorming sessions
-.superpowers/
+superpowers/
+diagrams/

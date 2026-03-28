@@ -16,7 +16,9 @@
 
   <!-- Prefect orchestrator dashed box (spans DVC through MLflow) -->
   <rect x="168" y="42" width="530" height="50" rx="8" fill="none" stroke="#070E10" stroke-width="1.5" stroke-dasharray="6 3"/>
-  <image x="182" y="52" width="22" height="22" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDcwRTEwIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UHJlZmVjdDwvdGl0bGU+PHBhdGggZD0iTTEyIDguMDAzIDQuMjg4IDQuMDAyIDEyIDBsNy43MTMgNHY4LjAwNEwxMiAxNnY4bC03LjcxLTR2LThMMTIgMTZWOC4wMDNaIi8+PC9zdmc+"/>
+  <g transform="translate(182.0,52.0) scale(0.9167,0.9167)">
+    <path d="M12 8.003 4.288 4.002 12 0l7.713 4v8.004L12 16v8l-7.71-4v-8L12 16V8.003Z" fill="#070E10"/>
+  </g>
   <text x="210" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#070E10">Prefect — Orchestrate</text>
 
   <!-- Vertical dashed lines from Prefect box down to controlled boxes -->
@@ -38,7 +40,9 @@
 
   <!-- Box 2: DVC -->
   <rect x="185" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="218" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMTNBREM3IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+RFZDPC90aXRsZT48cGF0aCBkPSJNMCA0LjkzNWEuMjk1LjI5NSAwIDAgMSAuMDktLjIyMy4yNTYuMjU2IDAgMCAxIC4yMDEtLjA5MmgzLjkyMWMxLjYwOC4xMjIgMi44MDguNTgyIDMuOTEyIDEuNzE2IDEuMTEgMS4xMzUgMS41NTEgMi40MjIgMS42OTIgNC4wNzguMTM1IDEuNTk0LS41MTYgMi45NzQtMS42MiA0LjEwOGE1LjQyIDUuNDIgMCAwIDEtMS44MTggMS4yOCA1LjMxNiA1LjMxNiAwIDAgMS0yLjE2Ni40MzFILjI5MmEuMjguMjggMCAwIDEtLjIwMi0uMDkyLjMxNS4zMTUgMCAwIDEtLjA2OS0uMTA0LjMyMi4zMjIgMCAwIDEtLjAyLS4xMjNWNC45MzVabTIuNTA4IDguODRINC4wNWMuOSAwIDEuNjUtLjMyNiAyLjI0NC0uOTczYTMuNDAzIDMuNDAzIDAgMCAwIC44OTEtMi4zOWMwLS45NDItLjMtMS43MzctLjg5LTIuMzgzYTIuOTM1IDIuOTM1IDAgMCAwLTEuMDItLjczNCAyLjg4IDIuODggMCAwIDAtMS4yMjUtLjIzOEgyLjUwOHptMTIuMDY0LjA2MmEuMzIuMzIgMCAwIDEgLjAyOC4zMTFsLTIuMzI0IDUuMDU2Yy0uMDYzLjEyMi0uMTUzLjE4LS4yNzMuMThoLS4xNjJjLS4xMiAwLS4yMS0uMDYtLjI3Ni0uMTg0bC0yLjI4LTQuOTkzYS4zMTcuMzE3IDAgMCAxIC4wMzMtLjMxNiA1LjEzNiA1LjEzNiAwIDAgMCAuOTYxLTMuMTdjLS4wMDItLjA4OC4xMzMtLjEyMy4xNjgtLjA0MmwxLjQ0IDMuMjM2aC4wOThsMS40OTQtMy4zNTRjLjAzNS0uMDc4LjE2LS4wNDkuMTYuMDM2IDAgMS4xNDcuMjkgMi4yODIuOTMzIDMuMjR6bTEuMTk2LjcyOGMtMS4xNC0xLjEyOC0xLjY2OC0yLjQ5Ni0xLjY2OC00LjEwOCAwLTEuNjIyLjUyNS0yLjk5NiAxLjY2OC00LjEzM0E1Ljc0IDUuNzQgMCAwIDEgMS45MS0xLjI4NSA1LjY1IDUuNjUgMCAwIDEgMi4yNDgtLjQyMyA1LjY5MiA1LjY5MiAwIDAgMSAzLjk0IDEuNTAzYy4xNjQuMTUzLjE2Ny4zMDYuMDE3LjQ1M2wtMS4yNjkgMS4zMWMtLjE0LjEyOC0uMjc5LjEyOC0uNDA4IDBhMy4yMSAzLjIxIDAgMCAwLTIuMTk5LS44MjVjLS45MTIgMC0xLjY3LjMyNS0yLjI4Ljk4MWEzLjI2NyAzLjI2NyAwIDAgMC0uODcgMi4zNDVjMCAuOTA4LjI3IDEuNjguODgyIDIuMzIxYTMuMDIzIDMuMDIzIDAgMCAwIDIuMjg2Ljk2IDMuMjU1IDMuMjU1IDAgMCAwIDIuMTgxLS43NzZjLjE1LS4xMjkuMjkxLS4xMjMuNDIuMDE1bDEuMjcyIDEuMzQzYy4xNDEuMTQxLjEzNS4yODUtLjAxNS40MzVhNS40OSA1LjQ5IDAgMCAxLTMuOTU3IDEuNTY3IDUuNjc1IDUuNjc1IDAgMCAxLTIuMjQ1LS40MTUgNS43OTUgNS43OTUgMCAwIDEtMS45MTMtMS4yN3oiLz48L3N2Zz4="/>
+  <g transform="translate(218.0,120.0) scale(1.0000,1.0000)">
+    <path d="M0 4.935a.295.295 0 0 1 .09-.223.256.256 0 0 1 .201-.092h3.921c1.608.122 2.808.582 3.912 1.716 1.11 1.135 1.551 2.422 1.692 4.078.135 1.594-.516 2.974-1.62 4.108a5.42 5.42 0 0 1-1.818 1.28 5.316 5.316 0 0 1-2.166.431H.292a.28.28 0 0 1-.202-.092.315.315 0 0 1-.069-.104.322.322 0 0 1-.02-.123V4.935Zm2.508 8.84H4.05c.9 0 1.65-.326 2.244-.973a3.403 3.403 0 0 0 .891-2.39c0-.942-.3-1.737-.89-2.383a2.935 2.935 0 0 0-1.02-.734 2.88 2.88 0 0 0-1.225-.238H2.508zm12.064.062a.32.32 0 0 1 .028.311l-2.324 5.056c-.063.122-.153.18-.273.18h-.162c-.12 0-.21-.06-.276-.184l-2.28-4.993a.317.317 0 0 1 .033-.316 5.136 5.136 0 0 0 .961-3.17c-.002-.088.133-.123.168-.042l1.44 3.236h.098l1.494-3.354c.035-.078.16-.049.16.036 0 1.147.29 2.282.933 3.24zm1.196.728c-1.14-1.128-1.668-2.496-1.668-4.108 0-1.622.525-2.996 1.668-4.133A5.74 5.74 0 0 1 1.91-1.285 5.65 5.65 0 0 1 2.248-.423 5.692 5.692 0 0 1 3.94 1.503c.164.153.167.306.017.453l-1.269 1.31c-.14.128-.279.128-.408 0a3.21 3.21 0 0 0-2.199-.825c-.912 0-1.67.325-2.28.981a3.267 3.267 0 0 0-.87 2.345c0 .908.27 1.68.882 2.321a3.023 3.023 0 0 0 2.286.96 3.255 3.255 0 0 0 2.181-.776c.15-.129.291-.123.42.015l1.272 1.343c.141.141.135.285-.015.435a5.49 5.49 0 0 1-3.957 1.567 5.675 5.675 0 0 1-2.245-.415 5.795 5.795 0 0 1-1.913-1.27z" fill="#13ADC7"/>
+  </g>
   <text x="230" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" fill="#334155">DVC</text>
   <text x="230" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Version Data</text>
 
@@ -56,7 +60,9 @@
 
   <!-- Box 4: PyTorch -->
   <rect x="425" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="458" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRUU0QzJDIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UHlUb3JjaDwvdGl0bGU+PHBhdGggZD0iTTEyLjAwNSAwTDQuOTUyIDcuMDUzYTkuODY1IDkuODY1IDAgMDAwIDE0LjAyMiA5Ljg2NiA5Ljg2NiAwIDAwMTQuMDIyIDBjMy45ODQtMy45IDMuOTg2LTEwLjIwNS4wODUtMTQuMDIzbC0xLjc0NCAxLjc0M2MyLjkwNCAyLjkwNSAyLjkwNCA3LjYzNCAwIDEwLjUzOHMtNy42MzQgMi45MDQtMTAuNTM4IDAtMi45MDQtNy42MzQgMC0xMC41MzhsNC42NDctNC42NDYuNTgyLS42NjV6bTMuNTY4IDMuODk5YTEuMzI3IDEuMzI3IDAgMDAtMS4zMjcgMS4zMjcgMS4zMjcgMS4zMjcgMCAwMDEuMzI3IDEuMzI4QTEuMzI3IDEuMzI3IDAgMDAxNi45IDUuMjI2IDEuMzI3IDEuMzI3IDAgMDAxNS41NzMgMy45eiIvPjwvc3ZnPg=="/>
+  <g transform="translate(458.0,120.0) scale(1.0000,1.0000)">
+    <path d="M12.005 0L4.952 7.053a9.865 9.865 0 000 14.022 9.866 9.866 0 0014.022 0c3.984-3.9 3.986-10.205.085-14.023l-1.744 1.743c2.904 2.905 2.904 7.634 0 10.538s-7.634 2.904-10.538 0-2.904-7.634 0-10.538l4.647-4.646.582-.665zm3.568 3.899a1.327 1.327 0 00-1.327 1.327 1.327 1.327 0 001.327 1.328A1.327 1.327 0 0016.9 5.226 1.327 1.327 0 0015.573 3.9z" fill="#EE4C2C"/>
+  </g>
   <text x="470" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" fill="#334155">PyTorch</text>
   <text x="470" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Train Model</text>
 
@@ -65,7 +71,9 @@
 
   <!-- Box 5: MLflow -->
   <rect x="545" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="578" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDE5NEUyIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+TUxmbG93PC90aXRsZT48cGF0aCBkPSJNMTEuODgzLjAwMmExMi4wNDQgMTIuMDQ0IDAgMCAwLTkuMzI2IDE5LjQ2M2wzLjY2OC0yLjY5NEE3LjU3MyA3LjU3MyAwIDAgMSAxMi4wNDMgNC40NXYyLjg2N2w2LjkwOC01LjE0QTEyLjAxMiAxMi4wMTIgMCAwIDAgMTEuODgzLjAwMnptOS41NjIgNC41MzNMMTcuNzc3IDcuMjNhNy41NzMgNy41NzMgMCAwIDEtNS44MTggMTIuMzIydi0yLjg2N2wtNi45MDggNS4xNGExMi4wNDYgMTIuMDQ2IDAgMCAwIDE2LjM5NC0xNy4yOXoiLz48L3N2Zz4="/>
+  <g transform="translate(578.0,120.0) scale(1.0000,1.0000)">
+    <path d="M11.883.002a12.044 12.044 0 0 0-9.326 19.463l3.668-2.694A7.573 7.573 0 0 1 12.043 4.45v2.867l6.908-5.14A12.012 12.012 0 0 0 11.883.002zm9.562 4.533L17.777 7.23a7.573 7.573 0 0 1-5.818 12.322v-2.867l-6.908 5.14a12.046 12.046 0 0 0 16.394-17.29z" fill="#0194E2"/>
+  </g>
   <text x="590" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" fill="#334155">MLflow</text>
   <text x="590" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Track &amp; Register</text>
 
@@ -74,7 +82,9 @@
 
   <!-- Box 6: FastAPI -->
   <rect x="665" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="698" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjMDA5Njg4IiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+RmFzdEFQSTwvdGl0bGU+PHBhdGggZD0iTTEyIC4wMzg3QzUuMzcyOS4wMzg0LjAwMDMgNS4zOTMxIDAgMTEuOTk4OGMtLjAwMSA2LjYwNjYgNS4zNzIgMTEuOTYyOCAxMiAxMS45NjI1IDYuNjI4LjAwMDMgMTIuMDAxLTUuMzU1OSAxMi0xMS45NjI1LS4wMDAzLTYuNjA1Ny01LjM3MjktMTEuOTYwNC0xMi0xMS45Nm0tLjgyOSA1LjQxNTNoNy41NWwtNy41ODA1IDUuMzI4NGg1LjE4MjhMNS4yNzkgMTguNTQzNnEyLjk0NjYtNi41NDQ0IDUuODkyLTEzLjA4OTYiLz48L3N2Zz4="/>
+  <g transform="translate(698.0,120.0) scale(1.0000,1.0000)">
+    <path d="M12 .0387C5.3729.0384.0003 5.3931 0 11.9988c-.001 6.6066 5.372 11.9628 12 11.9625 6.628.0003 12.001-5.3559 12-11.9625-.0003-6.6057-5.3729-11.9604-12-11.96m-.829 5.4153h7.55l-7.5805 5.3284h5.1828L5.279 18.5436q2.9466-6.5444 5.892-13.0896" fill="#009688"/>
+  </g>
   <text x="710" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" fill="#334155">FastAPI</text>
   <text x="710" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Serve Predictions</text>
 
@@ -83,7 +93,9 @@
 
   <!-- Box 7: Prometheus -->
   <rect x="785" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="818" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRTY1MjJDIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+UHJvbWV0aGV1czwvdGl0bGU+PHBhdGggZD0iTTEyIDBDNS4zNzMgMCAwIDUuMzcyIDAgMTJjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMnMxMi01LjM3MyAxMi0xMmMwLTYuNjI4LTUuMzczLTEyLTEyLTEyem0wIDIyLjQ2Yy0xLjg4NSAwLTMuNDE0LTEuMjYtMy40MTQtMi44MTRoNi44MjhjMCAxLjU1My0xLjUyOCAyLjgxMy0zLjQxNCAyLjgxM3ptNS42NC0zLjc0NUg2LjM2di0yLjA0NmgxMS4yOHYyLjA0NnptLS4wNC0zLjA5OEg2LjM5MWMtLjAzNy0uMDQzLS4wNzUtLjA4Ni0uMTExLS4xMy0xLjE1NS0xLjQwMS0xLjQyNy0yLjEzMy0xLjY5LTIuODc5LS4wMDUtLjAyNSAxLjQuMjg3IDIuMzk1LjUxMSAwIDAgLjUxMy4xMTkgMS4yNjIuMjU1LS43Mi0uODQzLTEuMTQ3LTEuOTE1LTEuMTQ3LTMuMDEgMC0yLjQwNiAxLjg0NS00LjUwOCAxLjE4LTYuMjA3LjY0OC4wNTMgMS4zNCAxLjM2NyAxLjM4NyAzLjQyMi42ODktLjk1MS45NzctMi42OS45NzctMy43NTUgMC0xLjEwMy43MjctMi4zODUgMS40NTQtMi40MjktLjY0OCAxLjA2OS4xNjggMS45ODQuODk0IDQuMjU2LjI3Mi44NTQuMjM3IDIuMjkuNDQ3IDMuMjAxLjA3LTEuODkyLjM5NS00LjY1MiAxLjU5NS01LjYwNS0uNTI5IDEuMi4wNzkgMi43MDIuNDk0IDMuNDI0LjY3MSAxLjE2NCAxLjA3OCAyLjA0NyAxLjA3OCAzLjcxNmE0LjY0MiA0LjY0MiAwIDAxLTEuMTEgMi45OTZjLjc5Mi0uMTQ5IDEuMzQtLjI4MyAxLjM0LS4yODNsMi41NzMtLjUwMnMtLjM3NCAxLjUzOC0xLjgxIDMuMDE5eiIvPjwvc3ZnPg=="/>
+  <g transform="translate(818.0,120.0) scale(1.0000,1.0000)">
+    <path d="M12 0C5.373 0 0 5.372 0 12c0 6.627 5.373 12 12 12s12-5.373 12-12c0-6.628-5.373-12-12-12zm0 22.46c-1.885 0-3.414-1.26-3.414-2.814h6.828c0 1.553-1.528 2.813-3.414 2.813zm5.64-3.745H6.36v-2.046h11.28v2.046zm-.04-3.098H6.391c-.037-.043-.075-.086-.111-.13-1.155-1.401-1.427-2.133-1.69-2.879-.005-.025 1.4.287 2.395.511 0 0 .513.119 1.262.255-.72-.843-1.147-1.915-1.147-3.01 0-2.406 1.845-4.508 1.18-6.207.648.053 1.34 1.367 1.387 3.422.689-.951.977-2.69.977-3.755 0-1.103.727-2.385 1.454-2.429-.648 1.069.168 1.984.894 4.256.272.854.237 2.29.447 3.201.07-1.892.395-4.652 1.595-5.605-.529 1.2.079 2.702.494 3.424.671 1.164 1.078 2.047 1.078 3.716a4.642 4.642 0 01-1.11 2.996c.792-.149 1.34-.283 1.34-.283l2.573-.502s-.374 1.538-1.81 3.019z" fill="#E6522C"/>
+  </g>
   <text x="830" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="9" font-weight="600" fill="#334155">Prometheus</text>
   <text x="830" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Collect Metrics</text>
 
@@ -92,7 +104,9 @@
 
   <!-- Box 8: Grafana -->
   <rect x="905" y="110" width="90" height="65" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" filter="url(#shadow)"/>
-  <image x="938" y="120" width="24" height="24" href="data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjRjQ2ODAwIiByb2xlPSJpbWciIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48dGl0bGU+R3JhZmFuYTwvdGl0bGU+PHBhdGggZD0iTTIzLjAyIDEwLjU5YTguNTc4IDguNTc4IDAgMCAwLS44NjItMy4wMzQgOC45MTEgOC45MTEgMCAwIDAtMS43ODktMi40NDVjLjMzNy0xLjM0Mi0uNDEzLTIuNTA1LS40MTMtMi41MDUtMS4yOTItLjA4LTIuMTEzLjQtMi40MTYuNjItLjA1Mi0uMDItLjEwMi0uMDQ0LS4xNTQtLjA2NC0uMjItLjA4OS0uNDQ2LS4xNzItLjY3Ny0uMjQ3LS4yMzEtLjA3My0uNDctLjE0LS43MTEtLjE5N2E5Ljg2NyA5Ljg2NyAwIDAgMC0uODc1LS4xNjFDMTQuNTU3Ljc1MyAxMi45NCAwIDEyLjk0IDBjLTEuODA0IDEuMTQ1LTIuMTQ3IDIuNzQ0LTIuMTQ3IDIuNzQ0bC0uMDE4LjA5M2MtLjA5OC4wMjktLjIuMDU3LS4yOTguMDg4LS4xMzguMDQyLS4yNzUuMDk0LS40MTMuMTQzLS4xMzguMDU1LS4yNzUuMTA3LS40MS4xNjZhOC44NjkgOC44NjkgMCAwIDAtMS41NTcuODdsLS4wNjMtLjAyOWMtMi40OTctLjk1NS00LjcxNi4xOTUtNC43MTYuMTk1LS4yMDMgMi42NTguOTk2IDQuMzMgMS4yMzUgNC42MzZhMTEuNjA4IDExLjYwOCAwIDAgMC0uNjA3IDIuNjM1QzEuNjM2IDEyLjY3Ny45NTMgMTUuMDE0Ljk1MyAxNS4wMTRjMS45MjYgMi4yMTQgNC4xNzEgMi4zNTEgNC4xNzEgMi4zNTEuMDAzLS4wMDIuMDA2LS4wMDIuMDA2LS4wMDUuMjg1LjUwOS42MTUuOTk0Ljk4NiAxLjQ0Ni4xNTYuMTkuMzIuMzcxLjQ4OC41NDgtLjcwNCAyLjAwOS4wOTkgMy42OC4wOTkgMy42OCAyLjE0NC4wOCAzLjU1My0uOTM3IDMuODQ5LTEuMTczYTkuNzg0IDkuNzg0IDAgMCAwIDMuMTY0LjUwMWguMDhsLjA1NS0uMDAzLjEwNy0uMDAyLjEwMy0uMDA1LjAwMy4wMDJjMS4wMSAxLjQ0IDIuNzg4IDEuNjQ2IDIuNzg4IDEuNjQ2IDEuMjY0LTEuMzMyIDEuMzM3LTIuNjUzIDEuMzM3LTIuOTR2LS4wNThjMC0uMDItLjAwMy0uMDM5LS4wMDMtLjA2LjI2NS0uMTg3LjUyLS4zODcuNzU4LS42YTcuODc1IDcuODc1IDAgMCAwIDEuNDE1LTEuN2MxLjQzLjA4MyAyLjQzNy0uODg1IDIuNDM3LS44ODUtLjIzNi0xLjQ5LTEuMDg1LTIuMjE2LTEuMjY0LTIuMzU0eiIvPjwvc3ZnPg=="/>
+  <g transform="translate(938.0,120.0) scale(1.0000,1.0000)">
+    <path d="M23.02 10.59a8.578 8.578 0 0 0-.862-3.034 8.911 8.911 0 0 0-1.789-2.445c.337-1.342-.413-2.505-.413-2.505-1.292-.08-2.113.4-2.416.62-.052-.02-.102-.044-.154-.064-.22-.089-.446-.172-.677-.247-.231-.073-.47-.14-.711-.197a9.867 9.867 0 0 0-.875-.161C14.557.753 12.94 0 12.94 0c-1.804 1.145-2.147 2.744-2.147 2.744l-.018.093c-.098.029-.2.057-.298.088-.138.042-.275.094-.413.143-.138.055-.275.107-.41.166a8.869 8.869 0 0 0-1.557.87l-.063-.029c-2.497-.955-4.716.195-4.716.195-.203 2.658.996 4.33 1.235 4.636a11.608 11.608 0 0 0-.607 2.635C1.636 12.677.953 15.014.953 15.014c1.926 2.214 4.171 2.351 4.171 2.351.003-.002.006-.002.006-.005.285.509.615.994.986 1.446.156.19.32.371.488.548-.704 2.009.099 3.68.099 3.68 2.144.08 3.553-.937 3.849-1.173a9.784 9.784 0 0 0 3.164.501h.08l.055-.003.107-.002.103-.005.003.002c1.01 1.44 2.788 1.646 2.788 1.646 1.264-1.332 1.337-2.653 1.337-2.94v-.058c0-.02-.003-.039-.003-.06.265-.187.52-.387.758-.6a7.875 7.875 0 0 0 1.415-1.7c1.43.083 2.437-.885 2.437-.885-.236-1.49-1.085-2.216-1.264-2.354z" fill="#F46800"/>
+  </g>
   <text x="950" y="155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="600" fill="#334155">Grafana</text>
   <text x="950" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8" fill="#64748b">Dashboard</text>
 
