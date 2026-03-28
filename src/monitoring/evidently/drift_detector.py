@@ -102,6 +102,47 @@ def save_drift_report_html(reference: pd.DataFrame, current: pd.DataFrame, outpu
     logger.info("Drift report saved to %s", output_path)
 
 
+def run_drift_test_suite(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    drift_share_threshold: float = 0.3,
+) -> dict[str, Any]:
+    """Run automated drift tests with pass/fail conditions.
+
+    Uses Evidently's built-in test capabilities to create a quality gate
+    that can be integrated into orchestration pipelines.
+
+    Args:
+        reference: Reference (baseline) DataFrame.
+        current: Current (production) DataFrame to compare against the reference.
+        drift_share_threshold: Maximum acceptable share of drifted columns (0.0-1.0).
+
+    Returns:
+        Dictionary with:
+            - passed (bool): Whether all tests passed.
+            - drift_score (float): Share of drifted columns.
+            - details (dict): Per-column drift test results.
+    """
+    # Reuse detect_drift for metrics extraction
+    drift_info = detect_drift(reference, current)
+    passed = drift_info["drift_score"] < drift_share_threshold
+
+    logger.info(
+        "Drift test suite: passed=%s drift_score=%.4f threshold=%.4f",
+        passed,
+        drift_info["drift_score"],
+        drift_share_threshold,
+    )
+
+    return {
+        "passed": passed,
+        "drift_score": drift_info["drift_score"],
+        "drift_detected": drift_info["drift_detected"],
+        "column_drifts": drift_info["column_drifts"],
+        "threshold": drift_share_threshold,
+    }
+
+
 def push_drift_metrics(pushgateway_url: str, drift_detected: bool, drift_score: float) -> None:
     """Push drift metrics to a Prometheus Pushgateway.
 

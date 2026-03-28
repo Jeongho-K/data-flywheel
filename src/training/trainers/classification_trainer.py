@@ -10,6 +10,8 @@ import mlflow
 import mlflow.pytorch
 import torch
 import torch.nn as nn
+from mlflow import MlflowClient
+from mlflow.models import infer_signature
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
@@ -117,6 +119,10 @@ def train(config: TrainConfig) -> dict[str, float]:
     mlflow.set_tracking_uri(config.mlflow_tracking_uri)
     mlflow.set_experiment(config.experiment_name)
 
+    # Enable autolog for automatic parameter/metric capture (models logged manually)
+    mlflow.pytorch.autolog(log_models=False, log_every_n_epoch=None)
+    mlflow.enable_system_metrics_logging()
+
     with mlflow.start_run() as run:
         # Log parameters
         mlflow.log_params({
@@ -174,14 +180,38 @@ def train(config: TrainConfig) -> dict[str, float]:
         # Log final metrics
         mlflow.log_metric("best_val_accuracy", best_val_acc)
 
-        # Log model to MLflow (in eval mode)
+        # Log model to MLflow (in evaluation mode) with signature and input example
         model.eval()
         try:
-            mlflow.pytorch.log_model(
+            sample_input = torch.randn(1, 3, config.image_size, config.image_size)
+            with torch.no_grad():
+                sample_output = model(sample_input.to(device))
+            signature = infer_signature(
+                sample_input.numpy(),
+                sample_output.cpu().numpy(),
+            )
+
+            model_info = mlflow.pytorch.log_model(
                 model,
                 name="model",
+                signature=signature,
+                input_example=sample_input.numpy(),
                 registered_model_name=config.registered_model_name,
             )
+
+            # Set model alias if model was registered
+            if config.registered_model_name and model_info.registered_model_version:
+                client = MlflowClient()
+                client.set_registered_model_alias(
+                    name=config.registered_model_name,
+                    alias="challenger",
+                    version=model_info.registered_model_version,
+                )
+                logger.info(
+                    "Set alias 'challenger' on %s version %s",
+                    config.registered_model_name,
+                    model_info.registered_model_version,
+                )
         except Exception:
             logger.exception(
                 "Failed to log model to MLflow. Training metrics are still recorded in run %s.",

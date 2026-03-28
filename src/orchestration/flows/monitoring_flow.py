@@ -15,12 +15,14 @@ from typing import Any
 import boto3
 import pandas as pd
 from prefect import flow, task
+from prefect.artifacts import create_markdown_artifact
 
 from src.monitoring.evidently.config import DriftConfig
 from src.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
     detect_drift,
     push_drift_metrics,
+    run_drift_test_suite,
     save_drift_report_html,
 )
 
@@ -144,6 +146,54 @@ def run_drift_detection(
         drift_detected=result["drift_detected"],
         drift_score=result["drift_score"],
     )
+    return result
+
+
+@task(name="run-drift-quality-gate")
+def run_drift_quality_gate(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    drift_share_threshold: float = 0.3,
+) -> dict[str, Any]:
+    """Run Evidently TestSuite as a quality gate.
+
+    Args:
+        reference: Reference (baseline) DataFrame.
+        current: Current (production) DataFrame.
+        drift_share_threshold: Maximum acceptable share of drifted columns.
+
+    Returns:
+        Dictionary with test suite results.
+
+    Raises:
+        RuntimeError: If drift test suite fails (drift exceeds threshold).
+    """
+    result = run_drift_test_suite(reference, current, drift_share_threshold)
+
+    status = "PASSED" if result["passed"] else "FAILED"
+    column_rows = ""
+    for col, score in result.get("column_drifts", {}).items():
+        column_rows += f"| {col} | {score:.4f} |\n"
+
+    markdown = f"""## Drift Quality Gate: {status}
+| Metric | Value |
+|--------|-------|
+| Drift Score | {result['drift_score']:.4f} |
+| Threshold | {result['threshold']:.4f} |
+| Result | {status} |
+
+### Per-Column Drift
+| Column | Score |
+|--------|-------|
+{column_rows}"""
+    create_markdown_artifact(key="drift-quality-gate", markdown=markdown)
+
+    if not result["passed"]:
+        raise RuntimeError(
+            f"Drift quality gate failed: drift_score={result['drift_score']:.4f} "
+            f"exceeds threshold={drift_share_threshold:.4f}"
+        )
+
     return result
 
 
@@ -287,6 +337,16 @@ def monitoring_pipeline(
         current=current_filtered,
         pushgateway_url=pushgateway_url,
     )
+
+    # Step 4.5: Run drift quality gate (TestSuite with pass/fail)
+    try:
+        gate_result = run_drift_quality_gate(
+            reference=reference_filtered,
+            current=current_filtered,
+        )
+        logger.info("Drift quality gate passed: %s", gate_result)
+    except RuntimeError:
+        logger.warning("Drift quality gate failed — continuing with report upload.")
 
     # Step 5: Upload drift report
     report_key = upload_drift_report(

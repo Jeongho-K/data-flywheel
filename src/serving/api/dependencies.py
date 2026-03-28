@@ -85,7 +85,12 @@ def load_model_from_registry(
     """
     mlflow.set_tracking_uri(mlflow_tracking_uri)
 
-    model_uri = f"models:/{model_name}/{model_version}"
+    # Support both version numbers and @alias format (e.g., "@champion")
+    if model_version.startswith("@"):
+        alias = model_version[1:]
+        model_uri = f"models:/{model_name}@{alias}"
+    else:
+        model_uri = f"models:/{model_name}/{model_version}"
     logger.info("Loading model from %s on device %s", model_uri, device)
 
     try:

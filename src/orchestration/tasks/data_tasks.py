@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import torch
 from prefect import task
+from prefect.artifacts import create_markdown_artifact
+from prefect.cache_policies import INPUTS
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +47,13 @@ def prepare_dataset(data_dir: str) -> Path:
     return path
 
 
-@task(name="validate-images", retries=1, retry_delay_seconds=10)
+@task(
+    name="validate-images",
+    retries=1,
+    retry_delay_seconds=10,
+    cache_policy=INPUTS,
+    cache_expiration=timedelta(hours=1),
+)
 def validate_images(data_dir: str) -> dict[str, Any]:
     """Run CleanVision image quality validation.
 
@@ -49,8 +62,7 @@ def validate_images(data_dir: str) -> dict[str, Any]:
 
     Returns:
         Dict with keys 'total_images', 'issues_found', 'health_score' (0.0-1.0),
-        and 'issue_{type}' counts. The 'health_score' key is used by the pipeline's
-        quality gate.
+        and 'issue_{type}' counts.
     """
     from src.data.validation import validate_image_dataset
 
@@ -60,4 +72,134 @@ def validate_images(data_dir: str) -> dict[str, Any]:
         "Image validation: %d images, %d issues, health=%.2f",
         report.total_images, report.issues_found, report.health_score,
     )
-    return report.to_dict()
+
+    result = report.to_dict()
+
+    # Create Prefect artifact for UI visibility
+    issue_rows = ""
+    for key, value in result.items():
+        if key.startswith("issue_"):
+            issue_type = key.replace("issue_", "")
+            issue_rows += f"| {issue_type} | {value} |\n"
+
+    markdown = f"""## Image Validation Report
+| Metric | Value |
+|--------|-------|
+| Total Images | {result.get('total_images', 'N/A')} |
+| Issues Found | {result.get('issues_found', 'N/A')} |
+| Health Score | {result.get('health_score', 0):.2f} |
+
+### Issue Breakdown
+| Issue Type | Count |
+|------------|-------|
+{issue_rows}"""
+    create_markdown_artifact(key="image-validation-report", markdown=markdown)
+
+    return result
+
+
+@task(name="validate-labels", retries=1, retry_delay_seconds=10)
+def validate_labels_task(
+    model: torch.nn.Module,
+    data_dir: str,
+    device: str,
+    num_classes: int,
+    image_size: int = 224,
+) -> dict[str, Any]:
+    """Validate labels using trained model predictions (post-hoc).
+
+    Runs inference on the training set with the trained model to get
+    predicted probabilities, then uses CleanLab to detect label issues.
+
+    Args:
+        model: Trained PyTorch model.
+        data_dir: Path to dataset directory with train/ subdirectory.
+        device: Device string (cpu/cuda/mps).
+        num_classes: Number of output classes.
+        image_size: Input image size for transforms.
+
+    Returns:
+        Dict with label quality metrics from LabelReport.to_dict().
+    """
+    from src.data.preprocessing.transforms import get_eval_transforms
+    from src.data.validation import validate_labels
+
+    train_dir = Path(data_dir) / "train"
+    dataset = ImageFolder(str(train_dir), transform=get_eval_transforms(image_size))
+    loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=0)
+
+    torch_device = torch.device(device)
+    model = model.to(torch_device)
+    model.eval()
+
+    all_labels: list[int] = []
+    all_probs: list[np.ndarray] = []
+
+    with torch.no_grad():
+        for images, targets in loader:
+            outputs = model(images.to(torch_device))
+            probs = torch.softmax(outputs, dim=1)
+            all_probs.append(probs.cpu().numpy())
+            all_labels.extend(targets.numpy().tolist())
+
+    labels_array = np.array(all_labels)
+    pred_probs = np.concatenate(all_probs, axis=0)
+
+    report = validate_labels(labels_array, pred_probs)
+    result = report.to_dict()
+
+    logger.info(
+        "Label validation: %d/%d issues (%.1f%%), avg_quality=%.3f",
+        result["label_issues_found"],
+        result["total_samples"],
+        result["label_issue_rate"] * 100,
+        result["avg_label_quality"],
+    )
+
+    # Create Prefect artifact
+    markdown = f"""## Label Validation Report (CleanLab)
+| Metric | Value |
+|--------|-------|
+| Total Samples | {result['total_samples']} |
+| Label Issues Found | {result['label_issues_found']} |
+| Label Issue Rate | {result['label_issue_rate']:.1%} |
+| Avg Label Quality | {result['avg_label_quality']:.3f} |
+"""
+    create_markdown_artifact(key="label-validation-report", markdown=markdown)
+
+    return result
+
+
+@task(name="ensure-data-available", retries=2, retry_delay_seconds=30)
+def ensure_data_available(data_dir: str) -> Path:
+    """Pull dataset from DVC remote if not present locally.
+
+    Args:
+        data_dir: Path to the dataset directory.
+
+    Returns:
+        Resolved dataset path.
+    """
+    import subprocess
+
+    path = Path(data_dir)
+    if path.exists():
+        logger.info("Data already available at %s", path)
+        return path
+
+    dvc_file = Path(f"{data_dir}.dvc")
+    if not dvc_file.exists():
+        raise FileNotFoundError(
+            f"Dataset not found at {path} and no DVC file at {dvc_file}. "
+            "Run 'dvc add' first or provide the correct data path."
+        )
+
+    logger.info("Data not found locally, pulling from DVC remote...")
+    result = subprocess.run(  # noqa: S603
+        ["dvc", "pull", str(dvc_file)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    logger.info("DVC pull completed: %s", result.stdout.strip())
+    return path

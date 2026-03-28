@@ -18,7 +18,10 @@ class ServingConfig(BaseSettings):
 
     # Model loading
     model_name: str = Field(default="cv-classifier", description="MLflow registered model name")
-    model_version: str = Field(default="latest", description="Model version to load")
+    model_version: str = Field(
+        default="@champion",
+        description="Model version to load ('latest', version number, or '@alias' like '@champion')",
+    )
     mlflow_tracking_uri: str = Field(default="http://mlflow:5000", description="MLflow server URI")
 
     # Inference
