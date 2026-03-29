@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-mlops}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlops_secret}
-      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-mlflow,prefect}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-mlflow,prefect,labelstudio}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/create-multiple-databases.sh:/docker-entrypoint-initdb.d/create-multiple-databases.sh:ro
@@ -238,9 +238,39 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Label Studio - Human-in-the-loop labeling (Active Learning Engine)
+  # ---------------------------------------------------------------------------
+  label-studio:
+    image: heartexlabs/label-studio:1.19.0
+    environment:
+      DJANGO_DB: default
+      POSTGRE_NAME: labelstudio
+      POSTGRE_USER: ${POSTGRES_USER:-mlops}
+      POSTGRE_PASSWORD: ${POSTGRES_PASSWORD:-mlops_secret}
+      POSTGRE_HOST: postgres
+      POSTGRE_PORT: "5432"
+      LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED: "true"
+      LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT: /label-studio/data
+    volumes:
+      - label_studio_data:/label-studio/data
+    ports:
+      - "${LABEL_STUDIO_PORT:-8081}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   minio_data:
   redis_data:
   prometheus_data:
   grafana_data:
+  label_studio_data:

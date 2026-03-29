@@ -39,6 +39,8 @@ dependencies = [
     "nvidia-ml-py>=12.0",
     # Redis (multi-worker reload sync)
     "redis>=5.0",
+    # Active Learning (Label Studio bridge)
+    "httpx>=0.27",
 ]
 
 [build-system]

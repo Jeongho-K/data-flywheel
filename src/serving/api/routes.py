@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import UTC, datetime
 
 import torch
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from PIL import Image
 
+from src.active_learning.accumulator.models import AccumulatedSample
 from src.data.preprocessing.transforms import get_eval_transforms
-from src.monitoring.metrics import record_prediction
+from src.monitoring.metrics import record_prediction, record_routing
 from src.serving.api.dependencies import ModelState, load_model_from_registry
 from src.serving.api.schemas import (
     HealthResponse,
@@ -86,6 +88,41 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
     class_names = request.app.state.serving_config.get_class_names_list()
     class_name = class_names[predicted_idx] if class_names and predicted_idx < len(class_names) else None
 
+    # Active Learning: uncertainty estimation and confidence routing
+    uncertainty_score: float | None = None
+    routing_decision: str | None = None
+
+    uncertainty_estimator = getattr(request.app.state, "uncertainty_estimator", None)
+    confidence_router = getattr(request.app.state, "confidence_router", None)
+
+    if uncertainty_estimator is not None:
+        uncertainty_scores = uncertainty_estimator.estimate([probs])
+        uncertainty_score = uncertainty_scores[0]
+
+    if confidence_router is not None and uncertainty_score is not None:
+        decision = confidence_router.route(confidence, uncertainty_score)
+        routing_decision = decision.route
+
+        if decision.route == "auto_accumulate":
+            accumulator = getattr(request.app.state, "auto_accumulator", None)
+            if accumulator is not None:
+                accumulator.add(AccumulatedSample(
+                    timestamp=datetime.now(tz=UTC).isoformat(),
+                    predicted_class=predicted_idx,
+                    class_name=class_name,
+                    confidence=confidence,
+                    probabilities=probs,
+                    model_version=ms.model_version,
+                ))
+
+        record_routing(
+            routing_decision=decision.route,
+            uncertainty_score=uncertainty_score,
+            accumulation_buffer_size=getattr(
+                getattr(request.app.state, "auto_accumulator", None), "buffer_size", None
+            ),
+        )
+
     # Record metrics and log prediction
     record_prediction(
         predicted_class=predicted_idx,
@@ -102,6 +139,8 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
             class_name=class_name,
             model_version=ms.model_version,
             mlflow_run_id=ms.mlflow_run_id,
+            uncertainty_score=uncertainty_score,
+            routing_decision=routing_decision,
         )
 
     return PredictionResponse(
@@ -109,6 +148,8 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
         class_name=class_name,
         confidence=confidence,
         probabilities=probs,
+        uncertainty_score=uncertainty_score,
+        routing_decision=routing_decision,
     )
 
 

@@ -36,6 +36,8 @@ class PredictionLog:
     probabilities: list[float]
     model_version: str = ""
     mlflow_run_id: str = ""
+    uncertainty_score: float | None = None
+    routing_decision: str | None = None
 
     def to_dict(self) -> dict:
         """Return the log entry as a plain dictionary.
@@ -101,6 +103,8 @@ class PredictionLogger:
         class_name: str | None = None,
         model_version: str = "",
         mlflow_run_id: str = "",
+        uncertainty_score: float | None = None,
+        routing_decision: str | None = None,
     ) -> None:
         """Append a prediction to the buffer, flushing automatically at threshold.
 
@@ -111,6 +115,8 @@ class PredictionLogger:
             class_name: Human-readable class name, or None if not available.
             model_version: MLflow model version that generated this prediction.
             mlflow_run_id: MLflow run ID of the training run that produced the model.
+            uncertainty_score: Uncertainty score from the AL estimator, if available.
+            routing_decision: AL routing decision (auto_accumulate/human_review/discard).
         """
         timestamp = datetime.now(tz=UTC).isoformat()
         entry = PredictionLog(
@@ -121,6 +127,8 @@ class PredictionLogger:
             probabilities=probabilities,
             model_version=model_version,
             mlflow_run_id=mlflow_run_id,
+            uncertainty_score=uncertainty_score,
+            routing_decision=routing_decision,
         )
 
         with self._lock:

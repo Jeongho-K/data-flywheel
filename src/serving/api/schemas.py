@@ -14,6 +14,12 @@ class PredictionResponse(BaseModel):
     class_name: str | None = Field(default=None, description="Human-readable class name if available")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score for predicted class")
     probabilities: list[float] = Field(min_length=1, description="Probability distribution over all classes")
+    uncertainty_score: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Uncertainty score (0=certain, 1=uncertain)"
+    )
+    routing_decision: str | None = Field(
+        default=None, description="AL routing: auto_accumulate, human_review, or discard"
+    )
 
 
 class ModelInfoResponse(BaseModel):
