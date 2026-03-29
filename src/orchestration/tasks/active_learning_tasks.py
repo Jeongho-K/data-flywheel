@@ -50,25 +50,25 @@ def fetch_uncertain_predictions(
     today = date.today()
     uncertain: list[dict] = []
 
+    paginator = client.get_paginator("list_objects_v2")
+
     for offset in range(lookback_days):
         day = today - timedelta(days=offset)
         prefix = f"{day.isoformat()}/"
 
-        response = client.list_objects_v2(Bucket=bucket, Prefix=prefix)
-        objects = response.get("Contents", [])
-
-        for obj in objects:
-            key = obj["Key"]
-            if not key.endswith(".jsonl"):
-                continue
-            body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
-            for line in body.decode("utf-8").strip().split("\n"):
-                line = line.strip()
-                if not line:
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if not key.endswith(".jsonl"):
                     continue
-                record = json.loads(line)
-                if record.get("routing_decision") == "human_review":
-                    uncertain.append(record)
+                body = client.get_object(Bucket=bucket, Key=key)["Body"].read()
+                for line in body.decode("utf-8").strip().split("\n"):
+                    line = line.strip()
+                    if not line:
+                        continue
+                    record = json.loads(line)
+                    if record.get("routing_decision") == "human_review":
+                        uncertain.append(record)
 
     logger.info(
         "Fetched %d uncertain predictions from the last %d day(s).",
@@ -283,7 +283,7 @@ def validate_accumulation_quality(
         }
 
     logger.info(
-        "Quality gate PASSED: %d samples, ratio=%.1%%, max_class=%.1%%.",
+        "Quality gate PASSED: %d samples, ratio=%.1f%%, max_class=%.1f%%.",
         num_samples,
         pseudo_ratio * 100,
         max_class_ratio * 100,
@@ -350,11 +350,14 @@ def cleanup_accumulated(
     for i in range(0, len(keys_to_delete), 1000):
         batch = keys_to_delete[i : i + 1000]
         delete_objects = [{"Key": k} for k in batch]
-        client.delete_objects(
+        response = client.delete_objects(
             Bucket=bucket,
             Delete={"Objects": delete_objects},
         )
-        deleted += len(batch)
+        errors = response.get("Errors", [])
+        if errors:
+            logger.warning("Failed to delete %d objects: %s", len(errors), errors[:3])
+        deleted += len(batch) - len(errors)
 
     logger.info("Deleted %d accumulated files from s3://%s/%s.", deleted, bucket, prefix)
     return deleted

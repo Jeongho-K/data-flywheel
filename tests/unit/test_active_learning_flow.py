@@ -36,7 +36,9 @@ class TestFetchUncertainPredictions:
         ]
 
         mock_client = MagicMock()
-        mock_client.list_objects_v2.return_value = {"Contents": [{"Key": "2026-03-29/logs.jsonl"}]}
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Contents": [{"Key": "2026-03-29/logs.jsonl"}]}]
+        mock_client.get_paginator.return_value = mock_paginator
         mock_client.get_object.return_value = {"Body": BytesIO(_jsonl_bytes(*records))}
 
         with patch(
@@ -56,7 +58,9 @@ class TestFetchUncertainPredictions:
 
     def test_returns_empty_when_no_logs(self):
         mock_client = MagicMock()
-        mock_client.list_objects_v2.return_value = {"Contents": []}
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [{"Contents": []}]
+        mock_client.get_paginator.return_value = mock_paginator
 
         with patch(
             "src.orchestration.tasks.active_learning_tasks.boto3.client",
@@ -75,12 +79,11 @@ class TestFetchUncertainPredictions:
     def test_skips_non_jsonl_files(self):
         record = {"predicted_class": 0, "confidence": 0.3, "routing_decision": "human_review"}
         mock_client = MagicMock()
-        mock_client.list_objects_v2.return_value = {
-            "Contents": [
-                {"Key": "2026-03-29/README.txt"},
-                {"Key": "2026-03-29/logs.jsonl"},
-            ]
-        }
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {"Contents": [{"Key": "2026-03-29/README.txt"}, {"Key": "2026-03-29/logs.jsonl"}]}
+        ]
+        mock_client.get_paginator.return_value = mock_paginator
         mock_client.get_object.return_value = {"Body": BytesIO(_jsonl_bytes(record))}
 
         with patch(
@@ -382,87 +385,5 @@ class TestActiveLearningFlow:
 # ---------------------------------------------------------------------------
 
 
-class TestDataAccumulationFlow:
-    """Tests for data_accumulation_flow."""
 
-    def test_flow_completes_with_valid_samples(self):
-        from src.orchestration.flows.data_accumulation_flow import data_accumulation_flow
-
-        samples = [
-            {"predicted_class": "cat", "confidence": 0.98, "_s3_key": "accumulated/a.jsonl"},
-            {"predicted_class": "dog", "confidence": 0.97, "_s3_key": "accumulated/a.jsonl"},
-        ]
-        quality_result = {
-            "passed": True,
-            "reason": "All checks passed",
-            "stats": {"num_samples": 2},
-        }
-
-        with (
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.fetch_accumulated_samples",
-                return_value=samples,
-            ),
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.validate_accumulation_quality",
-                return_value=quality_result,
-            ),
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.cleanup_accumulated",
-                return_value=1,
-            ),
-            patch("src.orchestration.flows.data_accumulation_flow.create_markdown_artifact"),
-        ):
-            result = data_accumulation_flow.fn()
-
-        assert result["status"] == "completed"
-        assert result["total_samples"] == 2
-        assert result["quality_gate_passed"] is True
-        assert result["files_cleaned"] == 1
-
-    def test_flow_blocks_on_quality_gate_failure(self):
-        from src.orchestration.flows.data_accumulation_flow import data_accumulation_flow
-
-        samples = [{"predicted_class": "cat", "confidence": 0.98}] * 10
-        quality_result = {
-            "passed": False,
-            "reason": "Insufficient samples: 10 < 50",
-            "stats": {"num_samples": 10},
-        }
-
-        with (
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.fetch_accumulated_samples",
-                return_value=samples,
-            ),
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.validate_accumulation_quality",
-                return_value=quality_result,
-            ),
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.cleanup_accumulated",
-            ) as mock_cleanup,
-            patch("src.orchestration.flows.data_accumulation_flow.create_markdown_artifact"),
-        ):
-            result = data_accumulation_flow.fn()
-
-        assert result["quality_gate_passed"] is False
-        assert "Insufficient samples" in result["reason"]
-        mock_cleanup.assert_not_called()
-
-    def test_flow_handles_empty_accumulation(self):
-        from src.orchestration.flows.data_accumulation_flow import data_accumulation_flow
-
-        with (
-            patch(
-                "src.orchestration.flows.data_accumulation_flow.fetch_accumulated_samples",
-                return_value=[],
-            ),
-            patch("src.orchestration.flows.data_accumulation_flow.create_markdown_artifact"),
-        ):
-            result = data_accumulation_flow.fn()
-
-        assert result["status"] == "completed"
-        assert result["total_samples"] == 0
-        assert result["quality_gate_passed"] is False
-        assert result["files_cleaned"] == 0
+# Data accumulation flow tests live in tests/unit/test_data_accumulation_flow.py
