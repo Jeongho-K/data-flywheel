@@ -8,5 +8,5 @@ contactPoints:
         type: "email"
         disableResolveMessage: false
         settings:
-          addresses: ""
+          addresses: "alerts@localhost"
           singleEmail: false
