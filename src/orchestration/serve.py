@@ -43,7 +43,7 @@ def main() -> None:
     parser.add_argument("--experiment-name", type=str, default="default-classification")
     parser.add_argument("--registered-model-name", type=str, default=None)
     parser.add_argument("--min-health-score", type=float, default=0.5)
-    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://localhost:5050")
+    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://localhost:5000")
 
     args = parser.parse_args()
 
@@ -52,8 +52,7 @@ def main() -> None:
     if prefect_api_url is None:
         prefect_api_url = "http://localhost:4200/api"
         logger.warning(
-            "PREFECT_API_URL not set, defaulting to %s. "
-            "Set this environment variable for production deployments.",
+            "PREFECT_API_URL not set, defaulting to %s. Set this environment variable for production deployments.",
             prefect_api_url,
         )
     os.environ["PREFECT_API_URL"] = prefect_api_url
@@ -93,8 +92,7 @@ def main() -> None:
             logger.info("Deployment serve interrupted by user. Shutting down.")
         except Exception:
             logger.exception(
-                "Failed to serve training pipeline. "
-                "Check PREFECT_API_URL (%s) and cron expression '%s'.",
+                "Failed to serve training pipeline. Check PREFECT_API_URL (%s) and cron expression '%s'.",
                 os.environ.get("PREFECT_API_URL", "not set"),
                 args.cron,
             )

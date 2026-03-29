@@ -34,6 +34,11 @@ dependencies = [
     "prometheus-client>=0.21",
     "prometheus-fastapi-instrumentator>=7.0",
     "evidently>=0.5",
+    # System metrics (required by mlflow.enable_system_metrics_logging)
+    "psutil>=6.0",
+    "nvidia-ml-py>=12.0",
+    # Redis (multi-worker reload sync)
+    "redis>=5.0",
 ]
 
 [build-system]

@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from src.training.trainers.classification_trainer import resolve_device
+from src.common.device import resolve_device
 
 
 class TestResolveDevice:

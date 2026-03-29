@@ -28,11 +28,23 @@ def build_dataframe_from_logs(raw_jsonl: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     records: list[dict[str, Any]] = []
+    total_lines = 0
     for line in raw_jsonl.splitlines():
         line = line.strip()
         if not line:
             continue
-        records.append(json.loads(line))
+        total_lines += 1
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.warning("Skipping malformed JSON line: %s", line[:200])
+
+    malformed_count = total_lines - len(records)
+    if total_lines > 0 and malformed_count / total_lines > 0.1:
+        raise ValueError(
+            f"Too many malformed JSON lines: {malformed_count}/{total_lines}. "
+            "Check log format."
+        )
 
     if not records:
         return pd.DataFrame()
@@ -102,18 +114,67 @@ def save_drift_report_html(reference: pd.DataFrame, current: pd.DataFrame, outpu
     logger.info("Drift report saved to %s", output_path)
 
 
-def push_drift_metrics(pushgateway_url: str, drift_detected: bool, drift_score: float) -> None:
+def check_drift_threshold(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    drift_share_threshold: float = 0.3,
+) -> dict[str, Any]:
+    """Check if drift exceeds a threshold based on detect_drift results.
+
+    Creates a quality gate that can be integrated into orchestration pipelines.
+
+    Args:
+        reference: Reference (baseline) DataFrame.
+        current: Current (production) DataFrame to compare against the reference.
+        drift_share_threshold: Maximum acceptable share of drifted columns (0.0-1.0).
+
+    Returns:
+        Dictionary with:
+            - passed (bool): Whether drift is below the threshold.
+            - drift_score (float): Share of drifted columns.
+            - drift_detected (bool): Whether dataset-level drift was detected.
+            - column_drifts (dict[str, float]): Per-column drift scores.
+            - threshold (float): The drift_share_threshold that was applied.
+    """
+    # Reuse detect_drift for metrics extraction
+    drift_info = detect_drift(reference, current)
+    passed = drift_info["drift_score"] < drift_share_threshold
+
+    logger.info(
+        "Drift test suite: passed=%s drift_score=%.4f threshold=%.4f",
+        passed,
+        drift_info["drift_score"],
+        drift_share_threshold,
+    )
+
+    return {
+        "passed": passed,
+        "drift_score": drift_info["drift_score"],
+        "drift_detected": drift_info["drift_detected"],
+        "column_drifts": drift_info["column_drifts"],
+        "threshold": drift_share_threshold,
+    }
+
+
+def push_drift_metrics(
+    pushgateway_url: str,
+    drift_detected: bool,
+    drift_score: float,
+    column_drifts: dict[str, float] | None = None,
+) -> None:
     """Push drift metrics to a Prometheus Pushgateway.
 
     Creates an isolated CollectorRegistry to avoid conflicts with the default
-    global registry. Pushes two gauges:
+    global registry. Pushes the following gauges:
         - evidently_drift_detected: 1.0 if drift was detected, else 0.0
         - evidently_drift_score: Share of drifted columns (0.0–1.0)
+        - evidently_column_drift_score: Per-column drift scores (labeled by column name)
 
     Args:
         pushgateway_url: URL of the Prometheus Pushgateway (e.g. ``http://pushgateway:9091``).
         drift_detected: Whether dataset-level drift was detected.
         drift_score: Share of drifted columns (0.0–1.0).
+        column_drifts: Per-column drift scores from detect_drift(). None skips per-column push.
     """
     registry = CollectorRegistry()
 
@@ -131,9 +192,20 @@ def push_drift_metrics(pushgateway_url: str, drift_detected: bool, drift_score: 
     g_detected.set(1.0 if drift_detected else 0.0)
     g_score.set(drift_score)
 
+    if column_drifts:
+        g_column = Gauge(
+            "evidently_column_drift_score",
+            "Per-column drift score",
+            labelnames=["column"],
+            registry=registry,
+        )
+        for column_name, column_score in column_drifts.items():
+            g_column.labels(column=column_name).set(column_score)
+
     push_to_gateway(pushgateway_url, job="evidently_drift", registry=registry)
     logger.info(
-        "Pushed drift metrics to Pushgateway: drift_detected=%s drift_score=%.4f",
+        "Pushed drift metrics to Pushgateway: drift_detected=%s drift_score=%.4f columns=%d",
         drift_detected,
         drift_score,
+        len(column_drifts) if column_drifts else 0,
     )

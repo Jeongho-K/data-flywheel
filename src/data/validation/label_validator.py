@@ -58,8 +58,7 @@ def validate_labels(
 
     if labels.shape[0] != pred_probs.shape[0]:
         raise ValueError(
-            f"Labels ({labels.shape[0]}) and pred_probs ({pred_probs.shape[0]}) "
-            "must have the same number of samples."
+            f"Labels ({labels.shape[0]}) and pred_probs ({pred_probs.shape[0]}) must have the same number of samples."
         )
 
     if pred_probs.ndim != 2:

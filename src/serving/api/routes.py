@@ -100,6 +100,8 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
             confidence=confidence,
             probabilities=probs,
             class_name=class_name,
+            model_version=ms.model_version,
+            mlflow_run_id=ms.mlflow_run_id,
         )
 
     return PredictionResponse(
@@ -138,6 +140,13 @@ async def model_reload(request: Request, body: ModelReloadRequest) -> ModelReloa
         ) from exc
 
     request.app.state.model_state = new_state
+
+    # Notify other Gunicorn workers via Redis Pub/Sub
+    reload_subscriber = getattr(request.app.state, "reload_subscriber", None)
+    if reload_subscriber is not None and reload_subscriber.is_active:
+        reload_subscriber.publish_reload(
+            {"model_name": target_name, "model_version": target_version}
+        )
 
     return ModelReloadResponse(
         status="ok",

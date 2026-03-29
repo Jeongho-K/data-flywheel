@@ -39,9 +39,7 @@ def create_classifier(
         ValueError: If model_name is not supported.
     """
     if model_name not in SUPPORTED_MODELS:
-        raise ValueError(
-            f"Unknown model '{model_name}'. Supported: {sorted(SUPPORTED_MODELS)}"
-        )
+        raise ValueError(f"Unknown model '{model_name}'. Supported: {sorted(SUPPORTED_MODELS)}")
     if num_classes < 1:
         raise ValueError(f"num_classes must be >= 1, got {num_classes}")
 
@@ -60,13 +58,14 @@ def create_classifier(
         model.classifier[3] = nn.Linear(in_features, num_classes)
     else:
         raise NotImplementedError(
-            f"Head replacement not implemented for '{model_name}'. "
-            "Add the appropriate logic in create_classifier()."
+            f"Head replacement not implemented for '{model_name}'. Add the appropriate logic in create_classifier()."
         )
 
     logger.info(
         "Created %s (pretrained=%s, num_classes=%d)",
-        model_name, pretrained, num_classes,
+        model_name,
+        pretrained,
+        num_classes,
     )
 
     return model

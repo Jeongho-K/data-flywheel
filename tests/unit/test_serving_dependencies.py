@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from src.serving.api.dependencies import ModelState, _detect_num_classes, resolve_device
+from src.common.device import resolve_device
+from src.serving.api.dependencies import ModelState, _detect_num_classes
 
 
 class TestModelState:
@@ -30,14 +31,14 @@ class TestResolveDevice:
         device = resolve_device("cpu")
         assert device == torch.device("cpu")
 
-    @patch("src.serving.api.dependencies.torch.cuda.is_available", return_value=True)
+    @patch("src.common.device.torch.cuda.is_available", return_value=True)
     def test_auto_with_cuda(self, _mock_cuda) -> None:
         """Auto should prefer CUDA when available."""
         device = resolve_device("auto")
         assert device == torch.device("cuda")
 
-    @patch("src.serving.api.dependencies.torch.cuda.is_available", return_value=False)
-    @patch("src.serving.api.dependencies.torch.backends.mps.is_available", return_value=False)
+    @patch("src.common.device.torch.cuda.is_available", return_value=False)
+    @patch("src.common.device.torch.backends.mps.is_available", return_value=False)
     def test_auto_fallback_cpu(self, _mock_mps, _mock_cuda) -> None:
         """Auto should fall back to CPU when no GPU available."""
         device = resolve_device("auto")
@@ -70,3 +71,100 @@ class TestDetectNumClasses:
         del model.fc
         del model.classifier
         assert _detect_num_classes(model) == 0
+
+
+class TestLoadModelFromRegistry:
+    """Tests for load_model_from_registry function."""
+
+    def test_alias_uri_format(self) -> None:
+        """Version starting with @ constructs models:/{name}@{alias} URI."""
+        from src.serving.api.dependencies import load_model_from_registry
+
+        mock_model = MagicMock()
+        mock_model.fc = torch.nn.Linear(512, 10)
+        del mock_model.classifier
+
+        mock_mv = MagicMock()
+        mock_mv.run_id = "run-123"
+
+        with (
+            patch("src.serving.api.dependencies.mlflow.set_tracking_uri"),
+            patch(
+                "src.serving.api.dependencies.mlflow.pytorch.load_model",
+                return_value=mock_model,
+            ) as mock_load,
+            patch("src.serving.api.dependencies.MlflowClient") as mock_client_cls,
+        ):
+            mock_client_cls.return_value.get_model_version_by_alias.return_value = mock_mv
+
+            result = load_model_from_registry(
+                model_name="my-model",
+                model_version="@champion",
+                mlflow_tracking_uri="http://mlflow:5000",
+                device=torch.device("cpu"),
+                image_size=224,
+            )
+
+        mock_load.assert_called_once_with("models:/my-model@champion", map_location="cpu")
+        assert result.mlflow_run_id == "run-123"
+
+    def test_numeric_version_uri_format(self) -> None:
+        """Numeric version constructs models:/{name}/{version} URI."""
+        from src.serving.api.dependencies import load_model_from_registry
+
+        mock_model = MagicMock()
+        mock_model.fc = torch.nn.Linear(512, 5)
+        del mock_model.classifier
+
+        mock_mv = MagicMock()
+        mock_mv.run_id = "run-456"
+
+        with (
+            patch("src.serving.api.dependencies.mlflow.set_tracking_uri"),
+            patch(
+                "src.serving.api.dependencies.mlflow.pytorch.load_model",
+                return_value=mock_model,
+            ) as mock_load,
+            patch("src.serving.api.dependencies.MlflowClient") as mock_client_cls,
+        ):
+            mock_client_cls.return_value.get_model_version.return_value = mock_mv
+
+            result = load_model_from_registry(
+                model_name="my-model",
+                model_version="3",
+                mlflow_tracking_uri="http://mlflow:5000",
+                device=torch.device("cpu"),
+                image_size=224,
+            )
+
+        mock_load.assert_called_once_with("models:/my-model/3", map_location="cpu")
+        assert result.mlflow_run_id == "run-456"
+
+    def test_source_run_id_graceful_degradation(self) -> None:
+        """When MlflowClient raises, run_id defaults to empty string."""
+        from src.serving.api.dependencies import load_model_from_registry
+
+        mock_model = MagicMock()
+        mock_model.fc = torch.nn.Linear(512, 10)
+        del mock_model.classifier
+
+        with (
+            patch("src.serving.api.dependencies.mlflow.set_tracking_uri"),
+            patch(
+                "src.serving.api.dependencies.mlflow.pytorch.load_model",
+                return_value=mock_model,
+            ),
+            patch("src.serving.api.dependencies.MlflowClient") as mock_client_cls,
+        ):
+            mock_client_cls.return_value.get_model_version_by_alias.side_effect = Exception("connection error")
+
+            result = load_model_from_registry(
+                model_name="my-model",
+                model_version="@champion",
+                mlflow_tracking_uri="http://mlflow:5000",
+                device=torch.device("cpu"),
+                image_size=224,
+            )
+
+        assert result.mlflow_run_id == ""
+        assert result.is_loaded is True

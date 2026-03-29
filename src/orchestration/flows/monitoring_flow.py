@@ -15,10 +15,12 @@ from typing import Any
 import boto3
 import pandas as pd
 from prefect import flow, task
+from prefect.artifacts import create_markdown_artifact
 
 from src.monitoring.evidently.config import DriftConfig
 from src.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
+    check_drift_threshold,
     detect_drift,
     push_drift_metrics,
     save_drift_report_html,
@@ -143,7 +145,75 @@ def run_drift_detection(
         pushgateway_url=pushgateway_url,
         drift_detected=result["drift_detected"],
         drift_score=result["drift_score"],
+        column_drifts=result.get("column_drifts"),
     )
+
+    # Create Prefect artifact for drift detection results
+    column_rows = ""
+    for col, score in result.get("column_drifts", {}).items():
+        column_rows += f"| {col} | {score:.4f} |\n"
+
+    status_emoji = "DRIFT DETECTED" if result["drift_detected"] else "No Drift"
+    markdown = f"""## Drift Detection Results: {status_emoji}
+| Metric | Value |
+|--------|-------|
+| Drift Detected | {result["drift_detected"]} |
+| Drift Score | {result["drift_score"]:.4f} |
+
+### Per-Column Drift Scores
+| Column | Score |
+|--------|-------|
+{column_rows}"""
+    create_markdown_artifact(key="drift-detection-results", markdown=markdown)
+
+    return result
+
+
+@task(name="run-drift-quality-gate")
+def run_drift_quality_gate(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    drift_share_threshold: float = 0.3,
+) -> dict[str, Any]:
+    """Run drift threshold check as a quality gate.
+
+    Args:
+        reference: Reference (baseline) DataFrame.
+        current: Current (production) DataFrame.
+        drift_share_threshold: Maximum acceptable share of drifted columns.
+
+    Returns:
+        Dictionary with drift threshold check results.
+
+    Raises:
+        RuntimeError: If drift exceeds threshold.
+    """
+    result = check_drift_threshold(reference, current, drift_share_threshold)
+
+    status = "PASSED" if result["passed"] else "FAILED"
+    column_rows = ""
+    for col, score in result.get("column_drifts", {}).items():
+        column_rows += f"| {col} | {score:.4f} |\n"
+
+    markdown = f"""## Drift Quality Gate: {status}
+| Metric | Value |
+|--------|-------|
+| Drift Score | {result["drift_score"]:.4f} |
+| Threshold | {result["threshold"]:.4f} |
+| Result | {status} |
+
+### Per-Column Drift
+| Column | Score |
+|--------|-------|
+{column_rows}"""
+    create_markdown_artifact(key="drift-quality-gate", markdown=markdown)
+
+    if not result["passed"]:
+        raise RuntimeError(
+            f"Drift quality gate failed: drift_score={result['drift_score']:.4f} "
+            f"exceeds threshold={drift_share_threshold:.4f}"
+        )
+
     return result
 
 
@@ -207,6 +277,7 @@ def monitoring_pipeline(
     reference_path: str | None = None,
     lookback_days: int | None = None,
     pushgateway_url: str | None = None,
+    fail_on_drift: bool = False,
 ) -> dict[str, Any]:
     """Run the full drift monitoring pipeline.
 
@@ -217,6 +288,7 @@ def monitoring_pipeline(
         2. Fetch reference (baseline) data from S3.
         3. Filter both DataFrames to common columns.
         4. Run Evidently drift detection and push metrics to Pushgateway.
+        4.5. Run drift quality gate (pass/fail test based on threshold).
         5. Generate and upload an HTML drift report to S3.
 
     Args:
@@ -228,6 +300,8 @@ def monitoring_pipeline(
         reference_path: S3 key of the reference JSONL file.
         lookback_days: Number of past days to include in current data.
         pushgateway_url: URL of the Prometheus Pushgateway.
+        fail_on_drift: If True, raise RuntimeError when drift exceeds threshold.
+            Defaults to False (log warning and continue).
 
     Returns:
         Dictionary with drift detection results and the uploaded report S3 key.
@@ -287,6 +361,18 @@ def monitoring_pipeline(
         current=current_filtered,
         pushgateway_url=pushgateway_url,
     )
+
+    # Step 4.5: Run drift quality gate (pass/fail based on threshold)
+    try:
+        gate_result = run_drift_quality_gate(
+            reference=reference_filtered,
+            current=current_filtered,
+        )
+        logger.info("Drift quality gate passed: %s", gate_result)
+    except RuntimeError:
+        if fail_on_drift:
+            raise
+        logger.warning("Drift quality gate failed — continuing with report upload.", exc_info=True)
 
     # Step 5: Upload drift report
     report_key = upload_drift_report(
