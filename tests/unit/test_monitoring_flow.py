@@ -311,3 +311,171 @@ class TestUploadDriftReport:
 
         assert isinstance(s3_key, str)
         assert s3_key.endswith("/drift-report.html")
+
+
+class TestRunDriftQualityGate:
+    """Tests for run_drift_quality_gate task."""
+
+    @staticmethod
+    def _gate_result(passed: bool = True) -> dict[str, object]:
+        """Create a mock check_drift_threshold return value."""
+        return {
+            "passed": passed,
+            "drift_score": 0.1 if passed else 0.5,
+            "drift_detected": not passed,
+            "column_drifts": {"confidence": 0.03},
+            "threshold": 0.3,
+        }
+
+    def test_returns_result_when_passed(self) -> None:
+        """Returns result dict when drift is below threshold."""
+        from src.orchestration.flows.monitoring_flow import run_drift_quality_gate
+
+        with (
+            patch(
+                "src.orchestration.flows.monitoring_flow.check_drift_threshold",
+                return_value=self._gate_result(passed=True),
+            ),
+            patch("src.orchestration.flows.monitoring_flow.create_markdown_artifact"),
+        ):
+            result = run_drift_quality_gate.fn(
+                reference=pd.DataFrame({"a": [1]}),
+                current=pd.DataFrame({"a": [1]}),
+            )
+
+        assert result["passed"] is True
+        assert result["drift_score"] == 0.1
+
+    def test_raises_runtime_error_when_failed(self) -> None:
+        """Raises RuntimeError when drift exceeds threshold."""
+        import pytest
+
+        from src.orchestration.flows.monitoring_flow import run_drift_quality_gate
+
+        with (
+            patch(
+                "src.orchestration.flows.monitoring_flow.check_drift_threshold",
+                return_value=self._gate_result(passed=False),
+            ),
+            patch("src.orchestration.flows.monitoring_flow.create_markdown_artifact"),
+            pytest.raises(RuntimeError, match="Drift quality gate failed"),
+        ):
+            run_drift_quality_gate.fn(
+                reference=pd.DataFrame({"a": [1]}),
+                current=pd.DataFrame({"a": [1]}),
+            )
+
+    def test_creates_markdown_artifact(self) -> None:
+        """Creates a Prefect markdown artifact with drift quality gate results."""
+        from src.orchestration.flows.monitoring_flow import run_drift_quality_gate
+
+        with (
+            patch(
+                "src.orchestration.flows.monitoring_flow.check_drift_threshold",
+                return_value=self._gate_result(passed=True),
+            ),
+            patch("src.orchestration.flows.monitoring_flow.create_markdown_artifact") as mock_artifact,
+        ):
+            run_drift_quality_gate.fn(
+                reference=pd.DataFrame({"a": [1]}),
+                current=pd.DataFrame({"a": [1]}),
+            )
+
+        mock_artifact.assert_called_once()
+        call_kwargs = mock_artifact.call_args[1]
+        assert call_kwargs["key"] == "drift-quality-gate"
+        assert "PASSED" in call_kwargs["markdown"]
+
+
+class TestMonitoringPipelineFailOnDrift:
+    """Tests for fail_on_drift parameter in monitoring_pipeline."""
+
+    @staticmethod
+    def _setup_pipeline_mocks() -> dict[str, Any]:
+        """Create mocks for monitoring_pipeline dependencies."""
+        current_df = pd.DataFrame({"predicted_class": [1, 2], "confidence": [0.9, 0.8]})
+        reference_df = pd.DataFrame({"predicted_class": [1, 2], "confidence": [0.9, 0.8]})
+        drift_result: dict[str, Any] = {
+            "drift_detected": True,
+            "drift_score": 0.5,
+            "column_drifts": {"confidence": 0.03},
+        }
+        return {
+            "current_df": current_df,
+            "reference_df": reference_df,
+            "drift_result": drift_result,
+        }
+
+    def _pipeline_patches(self, mocks: dict[str, Any]) -> dict[str, Any]:
+        """Return common patches for monitoring_pipeline tests."""
+        mock_cfg = MagicMock()
+        mock_cfg.s3_endpoint = "http://minio:9000"
+        mock_cfg.s3_access_key = "key"
+        mock_cfg.s3_secret_key = "secret"
+        mock_cfg.prediction_logs_bucket = "prediction-logs"
+        mock_cfg.drift_reports_bucket = "drift-reports"
+        mock_cfg.reference_path = "reference/baseline.jsonl"
+        mock_cfg.lookback_days = 1
+        mock_cfg.pushgateway_url = "http://pushgateway:9091"
+        return {
+            "config": patch("src.orchestration.flows.monitoring_flow.DriftConfig", return_value=mock_cfg),
+            "fetch_logs": patch(
+                "src.orchestration.flows.monitoring_flow.fetch_prediction_logs",
+                return_value=mocks["current_df"],
+            ),
+            "fetch_ref": patch(
+                "src.orchestration.flows.monitoring_flow.fetch_reference_data",
+                return_value=mocks["reference_df"],
+            ),
+            "drift_detect": patch(
+                "src.orchestration.flows.monitoring_flow.run_drift_detection",
+                return_value=mocks["drift_result"],
+            ),
+            "quality_gate": patch(
+                "src.orchestration.flows.monitoring_flow.run_drift_quality_gate",
+                side_effect=RuntimeError("Drift quality gate failed"),
+            ),
+        }
+
+    def test_fail_on_drift_true_raises(self) -> None:
+        """Pipeline raises RuntimeError when fail_on_drift=True and drift exceeds threshold."""
+        import pytest
+
+        from src.orchestration.flows.monitoring_flow import monitoring_pipeline
+
+        mocks = self._setup_pipeline_mocks()
+        patches = self._pipeline_patches(mocks)
+
+        with (
+            patches["config"],
+            patches["fetch_logs"],
+            patches["fetch_ref"],
+            patches["drift_detect"],
+            patches["quality_gate"],
+            patch("src.orchestration.flows.monitoring_flow.upload_drift_report"),
+            pytest.raises(RuntimeError, match="Drift quality gate failed"),
+        ):
+            monitoring_pipeline.fn(fail_on_drift=True)
+
+    def test_fail_on_drift_false_continues(self) -> None:
+        """Pipeline continues to report upload when fail_on_drift=False (default)."""
+        from src.orchestration.flows.monitoring_flow import monitoring_pipeline
+
+        mocks = self._setup_pipeline_mocks()
+        patches = self._pipeline_patches(mocks)
+
+        with (
+            patches["config"],
+            patches["fetch_logs"],
+            patches["fetch_ref"],
+            patches["drift_detect"],
+            patches["quality_gate"],
+            patch(
+                "src.orchestration.flows.monitoring_flow.upload_drift_report",
+                return_value="2026-03-29/drift-report.html",
+            ) as mock_upload,
+        ):
+            result = monitoring_pipeline.fn(fail_on_drift=False)
+
+        mock_upload.assert_called_once()
+        assert result["status"] == "completed"

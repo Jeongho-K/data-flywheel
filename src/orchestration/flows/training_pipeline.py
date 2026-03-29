@@ -1,37 +1,43 @@
 """End-to-end training pipeline flow.
 
-Orchestrates: data preparation → image validation → model training → label validation.
+Orchestrates: data preparation → image validation → model training → (optional) label validation.
 Designed to be run as a Prefect deployment with scheduling.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from prefect import flow
 
 from src.orchestration.tasks.data_tasks import prepare_dataset, validate_images
 from src.orchestration.tasks.training_tasks import train_model
 
+if TYPE_CHECKING:
+    from prefect import Flow
+    from prefect.client.schemas.objects import FlowRun
+    from prefect.states import State
+
 logger = logging.getLogger(__name__)
 
 
-def on_pipeline_failure(flow: object, flow_run: object, state: object) -> None:
+def on_pipeline_failure(flow: Flow, flow_run: FlowRun, state: State) -> None:
     """Log pipeline failure details for alerting."""
     logger.error(
         "Pipeline '%s' (run=%s) failed: %s",
-        getattr(flow, "name", "unknown"),
-        getattr(flow_run, "name", "unknown"),
-        getattr(state, "message", str(state)),
+        flow.name,
+        flow_run.name,
+        state.message,
     )
 
 
-def on_pipeline_completion(flow: object, flow_run: object, state: object) -> None:
+def on_pipeline_completion(flow: Flow, flow_run: FlowRun, state: State) -> None:
     """Log pipeline completion for tracking."""
     logger.info(
         "Pipeline '%s' (run=%s) completed successfully.",
-        getattr(flow, "name", "unknown"),
-        getattr(flow_run, "name", "unknown"),
+        flow.name,
+        flow_run.name,
     )
 
 
@@ -90,8 +96,7 @@ def training_pipeline(
     validation_metrics = validate_images(str(dataset_path))
     if "health_score" not in validation_metrics:
         raise RuntimeError(
-            f"Validation output missing 'health_score' key. "
-            f"Got keys: {list(validation_metrics.keys())}."
+            f"Validation output missing 'health_score' key. Got keys: {list(validation_metrics.keys())}."
         )
     health_score = validation_metrics["health_score"]
 
@@ -118,12 +123,18 @@ def training_pipeline(
 
     # Step 4: Optional label validation (post-hoc using trained model)
     if run_label_validation:
-        _run_post_hoc_label_validation(
-            data_dir=str(dataset_path),
-            num_classes=num_classes,
-            mlflow_tracking_uri=mlflow_tracking_uri,
-            registered_model_name=registered_model_name,
-        )
+        try:
+            _run_post_hoc_label_validation(
+                data_dir=str(dataset_path),
+                num_classes=num_classes,
+                mlflow_tracking_uri=mlflow_tracking_uri,
+                registered_model_name=registered_model_name,
+            )
+        except Exception:
+            logger.warning(
+                "Label validation failed, but training completed successfully.",
+                exc_info=True,
+            )
 
     logger.info("Pipeline complete: %s", metrics)
     return metrics
@@ -149,23 +160,16 @@ def _run_post_hoc_label_validation(
         logger.warning("Label validation skipped: no registered_model_name provided.")
         return
 
-    import mlflow.pytorch
-
-    mlflow.set_tracking_uri(mlflow_tracking_uri)
-    try:
-        model_uri = f"models:/{registered_model_name}@challenger"
-        model = mlflow.pytorch.load_model(model_uri)
-    except Exception:
-        logger.warning("Could not load challenger model for label validation, skipping.")
-        return
+    model_uri = f"models:/{registered_model_name}@challenger"
 
     from src.training.trainers.classification_trainer import resolve_device
 
     device = str(resolve_device("auto"))
     label_metrics = validate_labels_task(
-        model=model,
+        model_uri=model_uri,
         data_dir=data_dir,
         device=device,
         num_classes=num_classes,
+        mlflow_tracking_uri=mlflow_tracking_uri,
     )
     logger.info("Label validation results: %s", label_metrics)

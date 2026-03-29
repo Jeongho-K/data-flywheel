@@ -21,7 +21,7 @@ import pandas as pd
 from src.monitoring.evidently.drift_detector import (
     detect_drift,
     push_drift_metrics,
-    run_drift_test_suite,
+    check_drift_threshold,
     save_drift_report_html,
 )
 
@@ -97,7 +97,7 @@ def main() -> None:
 
     # 4. Run TestSuite quality gate
     logger.info("Running Evidently TestSuite quality gate...")
-    test_result = run_drift_test_suite(reference, current, drift_share_threshold=0.3)
+    test_result = check_drift_threshold(reference, current, drift_share_threshold=0.3)
     logger.info("TestSuite result: passed=%s, drift_score=%.4f", test_result["passed"], test_result["drift_score"])
 
     # 5. Save HTML drift report
@@ -112,18 +112,18 @@ def main() -> None:
     except Exception as e:
         logger.warning("Failed to push to Pushgateway: %s", e)
 
-    # 7. Print summary
-    print("\n" + "=" * 60)
-    print("EVIDENTLY DRIFT DETECTION SUMMARY")
-    print("=" * 60)
-    print(f"Reference data:  {len(reference)} samples")
-    print(f"Current data:    {len(current)} samples")
-    print(f"Drift detected:  {drift_result['drift_detected']}")
-    print(f"Drift score:     {drift_result['drift_score']:.4f}")
-    print(f"Column drifts:   {drift_result['column_drifts']}")
-    print(f"TestSuite pass:  {test_result['passed']}")
-    print(f"Report:          {report_path}")
-    print("=" * 60)
+    # 7. Log summary
+    logger.info("\n" + "=" * 60)
+    logger.info("EVIDENTLY DRIFT DETECTION SUMMARY")
+    logger.info("=" * 60)
+    logger.info("Reference data:  %d samples", len(reference))
+    logger.info("Current data:    %d samples", len(current))
+    logger.info("Drift detected:  %s", drift_result["drift_detected"])
+    logger.info("Drift score:     %.4f", drift_result["drift_score"])
+    logger.info("Column drifts:   %s", drift_result["column_drifts"])
+    logger.info("TestSuite pass:  %s", test_result["passed"])
+    logger.info("Report:          %s", report_path)
+    logger.info("=" * 60)
 
     # 8. Open report in browser
     webbrowser.open(f"file://{Path(report_path).resolve()}")

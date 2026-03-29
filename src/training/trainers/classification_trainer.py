@@ -40,21 +40,18 @@ def resolve_device(device_str: str) -> torch.device:
         if torch.backends.mps.is_available():
             return torch.device("mps")
         logger.warning(
-            "No GPU detected (CUDA/MPS unavailable). Falling back to CPU. "
-            "Training will be significantly slower."
+            "No GPU detected (CUDA/MPS unavailable). Falling back to CPU. Training will be significantly slower."
         )
         return torch.device("cpu")
 
     device = torch.device(device_str)
     if device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(
-            f"Device '{device_str}' requested but CUDA is not available. "
-            "Use --device auto or --device cpu."
+            f"Device '{device_str}' requested but CUDA is not available. Use --device auto or --device cpu."
         )
     if device.type == "mps" and not torch.backends.mps.is_available():
         raise RuntimeError(
-            f"Device '{device_str}' requested but MPS is not available. "
-            "Use --device auto or --device cpu."
+            f"Device '{device_str}' requested but MPS is not available. Use --device auto or --device cpu."
         )
     return device
 
@@ -96,12 +93,18 @@ def train(config: TrainConfig) -> dict[str, float]:
         raise RuntimeError(f"Validation dataset is empty: {val_dir}")
 
     train_loader = DataLoader(
-        train_dataset, batch_size=config.batch_size,
-        shuffle=True, num_workers=config.num_workers, pin_memory=pin_memory,
+        train_dataset,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=config.batch_size,
-        shuffle=False, num_workers=config.num_workers, pin_memory=pin_memory,
+        val_dataset,
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
     )
 
     logger.info("Train: %d images, Val: %d images", len(train_dataset), len(val_dataset))
@@ -112,7 +115,9 @@ def train(config: TrainConfig) -> dict[str, float]:
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay,
+        model.parameters(),
+        lr=config.learning_rate,
+        weight_decay=config.weight_decay,
     )
 
     # MLflow tracking
@@ -125,19 +130,21 @@ def train(config: TrainConfig) -> dict[str, float]:
 
     with mlflow.start_run() as run:
         # Log parameters
-        mlflow.log_params({
-            "model_name": config.model_name,
-            "num_classes": config.num_classes,
-            "pretrained": config.pretrained,
-            "epochs": config.epochs,
-            "batch_size": config.batch_size,
-            "learning_rate": config.learning_rate,
-            "weight_decay": config.weight_decay,
-            "image_size": config.image_size,
-            "device": str(device),
-            "train_samples": len(train_dataset),
-            "val_samples": len(val_dataset),
-        })
+        mlflow.log_params(
+            {
+                "model_name": config.model_name,
+                "num_classes": config.num_classes,
+                "pretrained": config.pretrained,
+                "epochs": config.epochs,
+                "batch_size": config.batch_size,
+                "learning_rate": config.learning_rate,
+                "weight_decay": config.weight_decay,
+                "image_size": config.image_size,
+                "device": str(device),
+                "train_samples": len(train_dataset),
+                "val_samples": len(val_dataset),
+            }
+        )
 
         best_val_acc = 0.0
         best_state_dict: dict[str, torch.Tensor] | None = None
@@ -147,25 +154,43 @@ def train(config: TrainConfig) -> dict[str, float]:
         for epoch in range(config.epochs):
             # Training phase
             train_loss, train_acc = _run_epoch(
-                model, train_loader, criterion, optimizer, device, training=True,
+                model,
+                train_loader,
+                criterion,
+                optimizer,
+                device,
+                training=True,
             )
 
             # Validation phase
             val_loss, val_acc = _run_epoch(
-                model, val_loader, criterion, None, device, training=False,
+                model,
+                val_loader,
+                criterion,
+                None,
+                device,
+                training=False,
             )
 
             # Log metrics
-            mlflow.log_metrics({
-                "train_loss": train_loss,
-                "train_accuracy": train_acc,
-                "val_loss": val_loss,
-                "val_accuracy": val_acc,
-            }, step=epoch)
+            mlflow.log_metrics(
+                {
+                    "train_loss": train_loss,
+                    "train_accuracy": train_acc,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_acc,
+                },
+                step=epoch,
+            )
 
             logger.info(
                 "Epoch %d/%d — train_loss=%.4f train_acc=%.4f val_loss=%.4f val_acc=%.4f",
-                epoch + 1, config.epochs, train_loss, train_acc, val_loss, val_acc,
+                epoch + 1,
+                config.epochs,
+                train_loss,
+                train_acc,
+                val_loss,
+                val_acc,
             )
 
             # Track best model
@@ -198,9 +223,16 @@ def train(config: TrainConfig) -> dict[str, float]:
                 input_example=sample_input.numpy(),
                 registered_model_name=config.registered_model_name,
             )
+        except Exception:
+            logger.exception(
+                "Failed to log model to MLflow. Training metrics are still recorded in run %s.",
+                run.info.run_id,
+            )
+            model_info = None
 
-            # Set model alias if model was registered
-            if config.registered_model_name and model_info.registered_model_version:
+        # Set model alias if model was registered (separate try block)
+        try:
+            if config.registered_model_name and model_info and model_info.registered_model_version:
                 client = MlflowClient()
                 client.set_registered_model_alias(
                     name=config.registered_model_name,
@@ -214,8 +246,8 @@ def train(config: TrainConfig) -> dict[str, float]:
                 )
         except Exception:
             logger.exception(
-                "Failed to log model to MLflow. Training metrics are still recorded in run %s.",
-                run.info.run_id,
+                "Failed to set model alias for %s. Model is logged but alias was not set.",
+                config.registered_model_name,
             )
 
         logger.info("Run %s complete. Best val accuracy: %.4f", run.info.run_id, best_val_acc)
@@ -276,8 +308,7 @@ def _run_epoch(
 
     if total == 0:
         raise RuntimeError(
-            "No samples were processed during the epoch. "
-            "Check that the dataset directory contains valid images."
+            "No samples were processed during the epoch. Check that the dataset directory contains valid images."
         )
 
     avg_loss = total_loss / total

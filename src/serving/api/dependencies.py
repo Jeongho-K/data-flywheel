@@ -102,9 +102,7 @@ def load_model_from_registry(
         model = model.to(device)
         model.eval()
     except Exception as exc:
-        raise RuntimeError(
-            f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}"
-        ) from exc
+        raise RuntimeError(f"Failed to load model '{model_uri}' from MLflow at {mlflow_tracking_uri}: {exc}") from exc
 
     num_classes = _detect_num_classes(model)
 
@@ -120,7 +118,7 @@ def load_model_from_registry(
             mv = client.get_model_version(model_name, model_version)
             source_run_id = mv.run_id
     except Exception:
-        logger.warning("Could not resolve source run_id for %s/%s", model_name, model_version)
+        logger.warning("Could not resolve source run_id for %s/%s", model_name, model_version, exc_info=True)
 
     logger.info(
         "Model loaded: %s (version=%s, run_id=%s, num_classes=%d, device=%s)",

@@ -106,8 +106,14 @@ def validate_image_dataset(
 
 
 VALID_ISSUE_TYPES = {
-    "dark", "light", "odd_aspect_ratio", "odd_size",
-    "low_information", "exact_duplicates", "near_duplicates", "blurry",
+    "dark",
+    "light",
+    "odd_aspect_ratio",
+    "odd_size",
+    "low_information",
+    "exact_duplicates",
+    "near_duplicates",
+    "blurry",
 }
 
 
@@ -133,9 +139,7 @@ def get_issue_image_paths(
         raise FileNotFoundError(f"Dataset path does not exist: {dataset_path}")
 
     if issue_type not in VALID_ISSUE_TYPES:
-        raise ValueError(
-            f"Unknown issue type '{issue_type}'. Valid types: {sorted(VALID_ISSUE_TYPES)}"
-        )
+        raise ValueError(f"Unknown issue type '{issue_type}'. Valid types: {sorted(VALID_ISSUE_TYPES)}")
 
     imagelab = Imagelab(data_path=str(dataset_path))
     imagelab.find_issues(issue_types={issue_type: {}})

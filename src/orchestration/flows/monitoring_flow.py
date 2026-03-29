@@ -20,9 +20,9 @@ from prefect.artifacts import create_markdown_artifact
 from src.monitoring.evidently.config import DriftConfig
 from src.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
+    check_drift_threshold,
     detect_drift,
     push_drift_metrics,
-    run_drift_test_suite,
     save_drift_report_html,
 )
 
@@ -155,7 +155,7 @@ def run_drift_quality_gate(
     current: pd.DataFrame,
     drift_share_threshold: float = 0.3,
 ) -> dict[str, Any]:
-    """Run Evidently TestSuite as a quality gate.
+    """Run drift threshold check as a quality gate.
 
     Args:
         reference: Reference (baseline) DataFrame.
@@ -163,12 +163,12 @@ def run_drift_quality_gate(
         drift_share_threshold: Maximum acceptable share of drifted columns.
 
     Returns:
-        Dictionary with test suite results.
+        Dictionary with drift threshold check results.
 
     Raises:
-        RuntimeError: If drift test suite fails (drift exceeds threshold).
+        RuntimeError: If drift exceeds threshold.
     """
-    result = run_drift_test_suite(reference, current, drift_share_threshold)
+    result = check_drift_threshold(reference, current, drift_share_threshold)
 
     status = "PASSED" if result["passed"] else "FAILED"
     column_rows = ""
@@ -178,8 +178,8 @@ def run_drift_quality_gate(
     markdown = f"""## Drift Quality Gate: {status}
 | Metric | Value |
 |--------|-------|
-| Drift Score | {result['drift_score']:.4f} |
-| Threshold | {result['threshold']:.4f} |
+| Drift Score | {result["drift_score"]:.4f} |
+| Threshold | {result["threshold"]:.4f} |
 | Result | {status} |
 
 ### Per-Column Drift
@@ -257,6 +257,7 @@ def monitoring_pipeline(
     reference_path: str | None = None,
     lookback_days: int | None = None,
     pushgateway_url: str | None = None,
+    fail_on_drift: bool = False,
 ) -> dict[str, Any]:
     """Run the full drift monitoring pipeline.
 
@@ -267,6 +268,7 @@ def monitoring_pipeline(
         2. Fetch reference (baseline) data from S3.
         3. Filter both DataFrames to common columns.
         4. Run Evidently drift detection and push metrics to Pushgateway.
+        4.5. Run drift quality gate (pass/fail test based on threshold).
         5. Generate and upload an HTML drift report to S3.
 
     Args:
@@ -278,6 +280,8 @@ def monitoring_pipeline(
         reference_path: S3 key of the reference JSONL file.
         lookback_days: Number of past days to include in current data.
         pushgateway_url: URL of the Prometheus Pushgateway.
+        fail_on_drift: If True, raise RuntimeError when drift exceeds threshold.
+            Defaults to False (log warning and continue).
 
     Returns:
         Dictionary with drift detection results and the uploaded report S3 key.
@@ -338,7 +342,7 @@ def monitoring_pipeline(
         pushgateway_url=pushgateway_url,
     )
 
-    # Step 4.5: Run drift quality gate (TestSuite with pass/fail)
+    # Step 4.5: Run drift quality gate (pass/fail based on threshold)
     try:
         gate_result = run_drift_quality_gate(
             reference=reference_filtered,
@@ -346,7 +350,9 @@ def monitoring_pipeline(
         )
         logger.info("Drift quality gate passed: %s", gate_result)
     except RuntimeError:
-        logger.warning("Drift quality gate failed — continuing with report upload.")
+        if fail_on_drift:
+            raise
+        logger.warning("Drift quality gate failed — continuing with report upload.", exc_info=True)
 
     # Step 5: Upload drift report
     report_key = upload_drift_report(

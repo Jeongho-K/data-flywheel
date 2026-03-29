@@ -28,11 +28,23 @@ def build_dataframe_from_logs(raw_jsonl: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     records: list[dict[str, Any]] = []
+    total_lines = 0
     for line in raw_jsonl.splitlines():
         line = line.strip()
         if not line:
             continue
-        records.append(json.loads(line))
+        total_lines += 1
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.warning("Skipping malformed JSON line: %s", line[:200])
+
+    malformed_count = total_lines - len(records)
+    if total_lines > 0 and malformed_count / total_lines > 0.1:
+        raise ValueError(
+            f"Too many malformed JSON lines: {malformed_count}/{total_lines}. "
+            "Check log format."
+        )
 
     if not records:
         return pd.DataFrame()
@@ -102,15 +114,14 @@ def save_drift_report_html(reference: pd.DataFrame, current: pd.DataFrame, outpu
     logger.info("Drift report saved to %s", output_path)
 
 
-def run_drift_test_suite(
+def check_drift_threshold(
     reference: pd.DataFrame,
     current: pd.DataFrame,
     drift_share_threshold: float = 0.3,
 ) -> dict[str, Any]:
-    """Run automated drift tests with pass/fail conditions.
+    """Check if drift exceeds a threshold based on detect_drift results.
 
-    Uses Evidently's built-in test capabilities to create a quality gate
-    that can be integrated into orchestration pipelines.
+    Creates a quality gate that can be integrated into orchestration pipelines.
 
     Args:
         reference: Reference (baseline) DataFrame.
@@ -119,9 +130,11 @@ def run_drift_test_suite(
 
     Returns:
         Dictionary with:
-            - passed (bool): Whether all tests passed.
+            - passed (bool): Whether drift is below the threshold.
             - drift_score (float): Share of drifted columns.
-            - details (dict): Per-column drift test results.
+            - drift_detected (bool): Whether dataset-level drift was detected.
+            - column_drifts (dict[str, float]): Per-column drift scores.
+            - threshold (float): The drift_share_threshold that was applied.
     """
     # Reuse detect_drift for metrics extraction
     drift_info = detect_drift(reference, current)

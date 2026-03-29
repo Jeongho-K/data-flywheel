@@ -52,8 +52,7 @@ def main() -> None:
     if prefect_api_url is None:
         prefect_api_url = "http://localhost:4200/api"
         logger.warning(
-            "PREFECT_API_URL not set, defaulting to %s. "
-            "Set this environment variable for production deployments.",
+            "PREFECT_API_URL not set, defaulting to %s. Set this environment variable for production deployments.",
             prefect_api_url,
         )
     os.environ["PREFECT_API_URL"] = prefect_api_url
@@ -93,8 +92,7 @@ def main() -> None:
             logger.info("Deployment serve interrupted by user. Shutting down.")
         except Exception:
             logger.exception(
-                "Failed to serve training pipeline. "
-                "Check PREFECT_API_URL (%s) and cron expression '%s'.",
+                "Failed to serve training pipeline. Check PREFECT_API_URL (%s) and cron expression '%s'.",
                 os.environ.get("PREFECT_API_URL", "not set"),
                 args.cron,
             )

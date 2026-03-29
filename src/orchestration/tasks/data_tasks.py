@@ -102,7 +102,7 @@ def validate_images(data_dir: str) -> dict[str, Any]:
 
 @task(name="validate-labels", retries=1, retry_delay_seconds=10)
 def validate_labels_task(
-    model: torch.nn.Module,
+    model_uri: str,
     data_dir: str,
     device: str,
     num_classes: int,
@@ -112,11 +112,11 @@ def validate_labels_task(
 ) -> dict[str, Any]:
     """Validate labels using trained model predictions (post-hoc).
 
-    Runs inference on the training set with the trained model to get
-    predicted probabilities, then uses CleanLab to detect label issues.
+    Loads the model from MLflow registry, runs inference on the training set
+    to get predicted probabilities, then uses CleanLab to detect label issues.
 
     Args:
-        model: Trained PyTorch model.
+        model_uri: MLflow model URI (e.g. "models:/my-model@challenger").
         data_dir: Path to dataset directory with train/ subdirectory.
         device: Device string (cpu/cuda/mps).
         num_classes: Number of output classes.
@@ -127,8 +127,15 @@ def validate_labels_task(
     Returns:
         Dict with label quality metrics from LabelReport.to_dict().
     """
+    import mlflow.pytorch
+
     from src.data.preprocessing.transforms import get_eval_transforms
     from src.data.validation import validate_labels
+
+    if mlflow_tracking_uri:
+        mlflow.set_tracking_uri(mlflow_tracking_uri)
+
+    model = mlflow.pytorch.load_model(model_uri, map_location="cpu")
 
     train_dir = Path(data_dir) / "train"
     dataset = ImageFolder(str(train_dir), transform=get_eval_transforms(image_size))

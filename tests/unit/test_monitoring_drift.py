@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 from src.monitoring.evidently.config import DriftConfig
 from src.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
+    check_drift_threshold,
     detect_drift,
     push_drift_metrics,
 )
@@ -81,6 +79,22 @@ class TestBuildDataframe:
         raw = '\n{"a": 1}\n\n{"a": 2}\n'
         df = build_dataframe_from_logs(raw)
         assert len(df) == 2
+
+    def test_skips_malformed_lines(self) -> None:
+        """Malformed JSON lines are skipped, valid lines are kept (within 10% threshold)."""
+        # 1 bad line out of 20 total = 5% malformed, below 10% threshold
+        good_lines = [json.dumps({"a": i}) for i in range(19)]
+        raw = "\n".join(good_lines[:10] + ["NOT_JSON"] + good_lines[10:])
+        df = build_dataframe_from_logs(raw)
+        assert len(df) == 19
+
+    def test_raises_on_high_malformed_ratio(self) -> None:
+        """Raises ValueError when more than 10% of lines are malformed."""
+        # 9 bad lines + 1 good = 90% malformed
+        lines = ["BAD"] * 9 + ['{"a": 1}']
+        raw = "\n".join(lines)
+        with pytest.raises(ValueError, match="Too many malformed JSON lines"):
+            build_dataframe_from_logs(raw)
 
 
 class TestDetectDrift:
@@ -184,3 +198,83 @@ class TestPushDriftMetrics:
         assert len(registries) == 2
         # Registries from separate calls should be distinct objects
         assert registries[0] is not registries[1]
+
+
+class TestCheckDriftThreshold:
+    """Tests for check_drift_threshold quality gate function."""
+
+    @staticmethod
+    def _mock_drift_result(drift_score: float = 0.2) -> dict[str, object]:
+        """Create a mock detect_drift return value."""
+        return {
+            "drift_detected": drift_score > 0.0,
+            "drift_score": drift_score,
+            "column_drifts": {"feature_a": 0.05, "feature_b": 0.01},
+        }
+
+    def test_pass_when_below_threshold(self) -> None:
+        """Returns passed=True when drift_score is below drift_share_threshold."""
+        ref = pd.DataFrame({"a": [1, 2, 3]})
+        cur = pd.DataFrame({"a": [1, 2, 3]})
+
+        with patch(
+            "src.monitoring.evidently.drift_detector.detect_drift",
+            return_value=self._mock_drift_result(drift_score=0.1),
+        ):
+            result = check_drift_threshold(ref, cur, drift_share_threshold=0.3)
+
+        assert result["passed"] is True
+
+    def test_fail_when_above_threshold(self) -> None:
+        """Returns passed=False when drift_score exceeds drift_share_threshold."""
+        ref = pd.DataFrame({"a": [1, 2, 3]})
+        cur = pd.DataFrame({"a": [1, 2, 3]})
+
+        with patch(
+            "src.monitoring.evidently.drift_detector.detect_drift",
+            return_value=self._mock_drift_result(drift_score=0.5),
+        ):
+            result = check_drift_threshold(ref, cur, drift_share_threshold=0.3)
+
+        assert result["passed"] is False
+
+    def test_boundary_equal_to_threshold_fails(self) -> None:
+        """Drift score exactly equal to threshold should fail (strict < comparison)."""
+        ref = pd.DataFrame({"a": [1, 2, 3]})
+        cur = pd.DataFrame({"a": [1, 2, 3]})
+
+        with patch(
+            "src.monitoring.evidently.drift_detector.detect_drift",
+            return_value=self._mock_drift_result(drift_score=0.3),
+        ):
+            result = check_drift_threshold(ref, cur, drift_share_threshold=0.3)
+
+        assert result["passed"] is False
+
+    def test_return_dict_has_all_keys(self) -> None:
+        """Return dict contains all 5 expected keys."""
+        ref = pd.DataFrame({"a": [1, 2, 3]})
+        cur = pd.DataFrame({"a": [1, 2, 3]})
+
+        with patch(
+            "src.monitoring.evidently.drift_detector.detect_drift",
+            return_value=self._mock_drift_result(drift_score=0.1),
+        ):
+            result = check_drift_threshold(ref, cur)
+
+        expected_keys = {"passed", "drift_score", "drift_detected", "column_drifts", "threshold"}
+        assert set(result.keys()) == expected_keys
+
+    def test_custom_threshold_is_applied(self) -> None:
+        """Non-default threshold is correctly applied and returned."""
+        ref = pd.DataFrame({"a": [1, 2, 3]})
+        cur = pd.DataFrame({"a": [1, 2, 3]})
+
+        with patch(
+            "src.monitoring.evidently.drift_detector.detect_drift",
+            return_value=self._mock_drift_result(drift_score=0.4),
+        ):
+            result = check_drift_threshold(ref, cur, drift_share_threshold=0.5)
+
+        assert result["passed"] is True
+        assert result["threshold"] == 0.5
