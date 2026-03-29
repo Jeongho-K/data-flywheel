@@ -53,30 +53,12 @@ Serve → Monitor → Confidence Split
 
 | Phase | Focus | Status |
 |---|---|---|
-| A: Active Learning Core | Uncertainty, routing, Label Studio, pseudo-labels | Planned |
+| A: Active Learning Core | Uncertainty, routing, Label Studio, pseudo-labels | **Implemented** |
 | B: Continuous Training Loop | Event-driven retrain, champion gate, data integration | Planned |
 | C: CI/CD & Deployment | GitHub Actions, CML, canary deploy, rollback | Planned |
 | D: Architecture Refactoring | core/ + plugins/ restructure, Protocol interfaces | Planned |
 
 Design spec: `docs/specs/2026-03-29-active-learning-first-mlops-design.md`
-
-## Quick Start
-
-```bash
-uv sync                       # Install Python dependencies
-cp .env.example .env          # Configure environment (adjust ports if needed)
-make up                       # Start all services
-make seed                     # Initialize buckets + MLflow experiment
-make verify                   # 13-point health check
-```
-
-Services after `make up`:
-- MLflow UI: http://localhost:5000 (or `$MLFLOW_PORT`)
-- Prefect UI: http://localhost:4200
-- MinIO Console: http://localhost:9001 (minioadmin / minioadmin123)
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 (admin / admin)
-- Pushgateway: http://localhost:9091
 
 ## Architecture
 
@@ -118,7 +100,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 | Prometheus | `prom/prometheus:v3.10.0` | Metrics collection |
 | Pushgateway | `prom/pushgateway:v1.11.0` | Batch metrics |
 | Grafana | `grafana/grafana-oss:12.4.1` | Dashboards + alerting |
-| Label Studio | (TBD — to be added in Phase A) | HITL labeling |
+| Label Studio | `heartexlabs/label-studio:1.19.0` | HITL labeling, PostgreSQL backend |
 | Python | 3.11.x | |
 | PyTorch | 2.6.x | Training |
 | CUDA | `nvidia/cuda:12.6.3-runtime-ubuntu22.04` | GPU training |
@@ -159,7 +141,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 ## MCP 도구 활용
 
-개발 중 추측하지 말고 MCP 도구로 확인한다:
+계획 및 개발 중 추측하지 말고 MCP 도구로 확인한다:
 - **Context7**: 라이브러리 API, 설정 방법, Docker 이미지 사용법 등 공식 문서 조회
 - **Tavily**: Docker Hub 태그 존재 여부, 최신 버전, 호환성 등 웹 검색
 - **Hugging Face**: 모델, 데이터셋 검색
@@ -196,6 +178,7 @@ MLOps-Pipeline/
 │   ├── serving/              # Layer 5: FastAPI, nginx, gunicorn
 │   ├── orchestration/        # Layer 4: Prefect flows, tasks
 │   ├── monitoring/           # Layer 6: Evidently, Prometheus, Grafana
+│   ├── active_learning/      # Pillar 1: AL Engine (uncertainty, routing, accumulation, labeling)
 │   └── common/               # Shared utilities
 ├── configs/                  # Service configuration files
 ├── tests/                    # unit, integration, e2e
@@ -224,25 +207,3 @@ src/
 │       └── models/           # CNN architectures
 └── common/                   # Shared utilities
 ```
-
-## Make Commands
-
-| Command | Description |
-|---|---|
-| `make install` | Install dependencies (uv sync) |
-| `make up` | Start all services |
-| `make down` | Stop all services |
-| `make down-v` | Stop and destroy volumes |
-| `make ps` | Show service status |
-| `make logs SERVICE=mlflow` | Tail service logs |
-| `make seed` | Initialize MinIO buckets and MLflow experiments |
-| `make train` | Run training with default config |
-| `make pipeline` | Run full pipeline once (data → validate → train) |
-| `make pipeline-serve` | Serve pipeline with schedule (default: weekly) |
-| `make lint` | Run Ruff linter |
-| `make format` | Run Ruff formatter |
-| `make test` | Run unit tests |
-| `make test-integration` | Run integration tests |
-| `make test-e2e` | Run end-to-end tests |
-| `make verify` | Run service health checks |
-| `make drift-check` | Run drift detection manually |

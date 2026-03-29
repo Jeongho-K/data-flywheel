@@ -12,6 +12,11 @@ from fastapi import FastAPI
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+from src.active_learning.accumulator.auto_accumulator import AutoAccumulator
+from src.active_learning.config import ActiveLearningConfig
+from src.active_learning.labeling.webhook import webhook_router
+from src.active_learning.routing.confidence_router import ConfidenceRouter
+from src.active_learning.uncertainty.softmax_entropy import SoftmaxEntropyEstimator
 from src.common.device import resolve_device
 from src.monitoring.metrics import setup_metrics
 from src.monitoring.prediction_logger import PredictionLogger
@@ -58,6 +63,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
     )
 
+    # Active Learning components
+    al_config = ActiveLearningConfig()
+    app.state.uncertainty_estimator = SoftmaxEntropyEstimator()
+    app.state.confidence_router = ConfidenceRouter(
+        auto_threshold=al_config.auto_accumulate_threshold,
+        uncertainty_threshold=al_config.uncertainty_threshold,
+    )
+    app.state.auto_accumulator = AutoAccumulator(
+        s3_endpoint=al_config.s3_endpoint,
+        bucket=al_config.accumulation_bucket,
+        prefix=al_config.accumulation_prefix,
+        access_key=os.environ["AWS_ACCESS_KEY_ID"],
+        secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        flush_threshold=al_config.accumulation_buffer_size,
+    )
+    logger.info(
+        "Active Learning enabled: auto_threshold=%.2f, uncertainty_threshold=%.2f",
+        al_config.auto_accumulate_threshold,
+        al_config.uncertainty_threshold,
+    )
+
     # Start Redis Pub/Sub subscriber for cross-worker model reload sync
     redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
 
@@ -88,6 +114,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Shutting down, releasing model resources")
     reload_subscriber.stop()
     app.state.prediction_logger.flush()
+    app.state.auto_accumulator.flush()
     app.state.model_state = ModelState()
 
 
@@ -118,6 +145,7 @@ def create_app(config: ServingConfig | None = None, *, enable_lifespan: bool = T
     app.state.model_state = ModelState()
 
     app.include_router(router)
+    app.include_router(webhook_router)
     setup_metrics(app)
 
     return app

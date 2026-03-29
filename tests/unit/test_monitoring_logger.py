@@ -32,6 +32,8 @@ class TestPredictionLog:
             "probabilities": [0.03, 0.05, 0.92],
             "model_version": "",
             "mlflow_run_id": "",
+            "uncertainty_score": None,
+            "routing_decision": None,
         }
 
     def test_to_dict_with_none_class_name(self) -> None:

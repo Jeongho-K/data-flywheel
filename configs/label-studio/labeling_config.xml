@@ -1,0 +1,7 @@
+<View>
+  <Image name="image" value="$image"/>
+  <Choices name="label" toName="image" showInLine="true">
+    <Choice value="class_0"/>
+    <Choice value="class_1"/>
+  </Choices>
+</View>
