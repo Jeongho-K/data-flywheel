@@ -1,9 +1,64 @@
-# MLOps Pipeline - Project Rules
+# Active Learning-First MLOps Platform
 
-## Overview
+## Core Philosophy
 
-General-purpose CV MLOps pipeline template for on-premises deployment.
-Supports image classification, detection, and segmentation workflows.
+> **이 프로젝트는 Active Learning Loop을 중심으로 모든 MLOps 컴포넌트가 유기적으로 연결된 폐루프(closed-loop) ML 운영 플랫폼이다.**
+
+Production-grade on-premises MLOps platform. CV first, domain-agnostic by design.
+
+### 5 Core Principles
+
+1. **Closed-Loop by Design** — 파이프라인은 순환형이다: train → serve → monitor → select → label → retrain. 모니터링이 끝이 아니라 다음 학습의 시작점.
+2. **Dual-Path Data Flywheel** — 서빙되는 모든 데이터는 학습 자산이다. High confidence → pseudo-label 자동 축적. Low confidence → human labeling queue. 서비스 운영이 곧 모델 개선.
+3. **Event-Driven Automation** — 시간 기반이 아닌 사건 기반(drift 감지, 라벨링 완료, 품질 임계치 위반)으로 파이프라인 작동. 필요할 때만 자원 사용, 필요할 때 즉시 반응.
+4. **Domain-Agnostic Core + Plugins** — Active Learning Loop의 흐름은 도메인 무관. CV, NLP, Tabular는 Plugin으로 존재. Framework가 흐름을, Plugin이 구현을 담당.
+5. **Quality Gate at Every Transition** — 모든 상태 전환에 자동화된 품질 검증. Gate 없는 자동화는 사고다.
+
+### Data Flywheel
+
+```
+Serve → Monitor → Confidence Split
+                    ├─ High conf → Auto-Accumulate (pseudo-label) ─┐
+                    └─ Low conf  → Label Studio (human review)  ───┤
+                                                                    ▼
+                                                              Retrain (Prefect)
+                                                                    │
+                                                           Evaluate (Champion Gate)
+                                                                    │
+                                                             Deploy (Canary)
+                                                                    │
+                                                                  Serve ← (loop)
+```
+
+### Four Pillars (Functional Architecture)
+
+| Pillar | Role | Key Components |
+|---|---|---|
+| **Active Learning Engine** (심장) | 어떤 데이터를 학습할지 결정 | Uncertainty Estimator, Confidence Router, Sample Selector, Auto-Accumulator, Label Studio Bridge |
+| **Monitoring & Trigger** (눈과 귀) | 시스템 감시 + 이벤트 발생 | Prometheus, Evidently, Confidence Tracker, Alert & Trigger |
+| **CI/CD Pipeline** (품질 보증) | 코드와 모델의 품질 보증 | GitHub Actions, CML, DVC, Quality Gates |
+| **Orchestration** (접착제) | Event-driven flow 연결 | Prefect flows: training, monitoring, active_learning, deployment, data_accumulation |
+
+### Quality Gates (5-Gate System)
+
+| Gate | Location | Validates | On Failure |
+|---|---|---|---|
+| G1: Data Quality | Before train | health score, pseudo-label ratio, min size | Block training |
+| G2: Training Quality | After train | val metrics, overfitting check | Block registration |
+| G3: Champion Gate | Before deploy | New model vs champion comparison | Block deployment |
+| G4: Canary Gate | After canary | error rate, latency, confidence | Auto-rollback |
+| G5: Runtime Gate | During serving | drift, confidence anomaly, error spike | Trigger AL or rollback |
+
+### Implementation Phases
+
+| Phase | Focus | Status |
+|---|---|---|
+| A: Active Learning Core | Uncertainty, routing, Label Studio, pseudo-labels | Planned |
+| B: Continuous Training Loop | Event-driven retrain, champion gate, data integration | Planned |
+| C: CI/CD & Deployment | GitHub Actions, CML, canary deploy, rollback | Planned |
+| D: Architecture Refactoring | core/ + plugins/ restructure, Protocol interfaces | Planned |
+
+Design spec: `docs/specs/2026-03-29-active-learning-first-mlops-design.md`
 
 ## Quick Start
 
@@ -23,7 +78,11 @@ Services after `make up`:
 - Grafana: http://localhost:3000 (admin / admin)
 - Pushgateway: http://localhost:9091
 
-## Architecture (6 Layers)
+## Architecture
+
+### Infrastructure Layers (6-Layer)
+
+인프라 관점의 계층 분리. 상위 레이어는 하위 레이어만 참조 가능.
 
 ```
 Layer 6: Monitoring    — Evidently, Prometheus, Grafana
@@ -36,6 +95,14 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 **Layer dependency rule:** Upper layers may only reference lower layers. Never import upward.
 
+### Functional Pillars (4-Pillar) — See "Core Philosophy" section above
+
+6-Layer(인프라)와 4-Pillar(기능)는 대체가 아닌 보완 관계:
+- 6-Layer = **어떤 기술로** 구성되는가 (infra view)
+- 4-Pillar = **왜, 어떤 역할로** 존재하는가 (functional view)
+
+모든 개발은 4-Pillar의 역할에 부합하도록, 6-Layer의 의존성 규칙을 준수하며 진행한다.
+
 ## Tech Stack (Pinned Versions)
 
 | Component | Version / Image | Notes |
@@ -46,14 +113,15 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 | MLflow | `docker/mlflow/Dockerfile` (base: `ghcr.io/mlflow/mlflow:v3.10.1`) | Custom build: +psycopg2-binary +boto3 |
 | Prefect | `prefecthq/prefect:3.6.23-python3.11` | Requires explicit `command` |
 | Redis | `redis:7.4-alpine` | |
-| Nginx | `nginx:1.28.1-alpine` | Phase 5 |
-| FastAPI | `fastapi>=0.115` + `uvicorn>=0.30` + `gunicorn>=22.0` | Phase 5 |
-| Prometheus | `prom/prometheus:v3.10.0` | Phase 6 |
-| Pushgateway | `prom/pushgateway:v1.11.0` | Phase 6 |
-| Grafana | `grafana/grafana-oss:12.4.1` | Phase 6 |
+| Nginx | `nginx:1.28.1-alpine` | Reverse proxy + canary |
+| FastAPI | `fastapi>=0.115` + `uvicorn>=0.30` + `gunicorn>=22.0` | Serving layer |
+| Prometheus | `prom/prometheus:v3.10.0` | Metrics collection |
+| Pushgateway | `prom/pushgateway:v1.11.0` | Batch metrics |
+| Grafana | `grafana/grafana-oss:12.4.1` | Dashboards + alerting |
+| Label Studio | (TBD — to be added in Phase A) | HITL labeling |
 | Python | 3.11.x | |
-| PyTorch | 2.6.x | Phase 3 |
-| CUDA | `nvidia/cuda:12.6.3-runtime-ubuntu22.04` | Phase 3 |
+| PyTorch | 2.6.x | Training |
+| CUDA | `nvidia/cuda:12.6.3-runtime-ubuntu22.04` | GPU training |
 
 ## Coding Standards
 
@@ -78,7 +146,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 - **Code** (variables, functions, classes, comments, docstrings): English
 - **Documentation** (`docs/*.md`, `README.md`): Korean
 - **Commit messages**: English, conventional commits (`feat:`, `fix:`, `docs:`, `infra:`, `test:`, `refactor:`)
-- **Branches**: `feature/phase-{N}-{name}`, `fix/{description}`
+- **Branches**: `feature/{description}`, `fix/{description}`
 
 
 ## Testing
@@ -94,7 +162,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 개발 중 추측하지 말고 MCP 도구로 확인한다:
 - **Context7**: 라이브러리 API, 설정 방법, Docker 이미지 사용법 등 공식 문서 조회
 - **Tavily**: Docker Hub 태그 존재 여부, 최신 버전, 호환성 등 웹 검색
-- **Hugging Face**: 모델, 데이터셋 검색 (Phase 2~3)
+- **Hugging Face**: 모델, 데이터셋 검색
 
 활용 시점:
 - Docker 이미지 태그를 지정할 때 → Tavily로 실제 존재 여부 확인
@@ -110,9 +178,11 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 ## Directory Structure
 
+### Current (pre-Phase D refactoring)
+
 ```
 MLOps-Pipeline/
-├── CLAUDE.md                 # This file
+├── CLAUDE.md                 # This file — project philosophy + rules
 ├── README.md                 # Project intro + docs links (Korean)
 ├── docker-compose.yml        # All services
 ├── docker-compose.override.yml # GPU/dev overrides
@@ -125,12 +195,34 @@ MLOps-Pipeline/
 │   ├── training/             # Layer 3: models, trainers, configs
 │   ├── serving/              # Layer 5: FastAPI, nginx, gunicorn
 │   ├── orchestration/        # Layer 4: Prefect flows, tasks
-│   └── monitoring/           # Layer 6: Evidently, Prometheus, Grafana
+│   ├── monitoring/           # Layer 6: Evidently, Prometheus, Grafana
+│   └── common/               # Shared utilities
 ├── configs/                  # Service configuration files
 ├── tests/                    # unit, integration, e2e
 ├── scripts/                  # Setup and utility scripts
 ├── examples/                 # Example templates
 └── docs/                     # Documentation (Korean)
+```
+
+### Target (after Phase D — Domain-Agnostic restructure)
+
+```
+src/
+├── core/                     # Framework (domain-agnostic)
+│   ├── active_learning/      # Uncertainty routing, sample selection interfaces
+│   ├── orchestration/        # Prefect flows
+│   ├── monitoring/           # Metrics, drift detection
+│   ├── serving/              # FastAPI app, model loading
+│   └── ci/                   # Quality gates, evaluation
+├── plugins/                  # Domain-specific implementations
+│   └── cv/                   # CV Plugin (first implementation)
+│       ├── uncertainty.py    # Softmax entropy estimator
+│       ├── validator.py      # CleanVision + CleanLab
+│       ├── trainer.py        # PyTorch classification trainer
+│       ├── selector.py       # Uncertainty-based sample selector
+│       ├── transforms.py     # Image preprocessing
+│       └── models/           # CNN architectures
+└── common/                   # Shared utilities
 ```
 
 ## Make Commands
@@ -152,17 +244,5 @@ MLOps-Pipeline/
 | `make test` | Run unit tests |
 | `make test-integration` | Run integration tests |
 | `make test-e2e` | Run end-to-end tests |
-| `make verify` | Run Phase verification checks |
+| `make verify` | Run service health checks |
 | `make drift-check` | Run drift detection manually |
-
-## Gotchas
-
-- **Port 5000 충돌**: macOS ControlCenter가 5000 사용. `.env`에서 `MLFLOW_PORT=5050`으로 변경
-- **MLflow + PostgreSQL**: 공식 MLflow 이미지에 `psycopg2` 미포함 → `docker/mlflow/Dockerfile`로 커스텀 빌드 필수
-- **Prefect 서버 시작**: 이미지 기본 entrypoint가 서버를 시작하지 않음 → `command: prefect server start --host 0.0.0.0 --port 4200` 필수
-- **MinIO mc 이미지**: `minio/minio` 서버 이미지에 `mc` CLI 미포함. 버킷 작업은 별도 `minio/mc` 이미지 사용
-- **DB 초기화 스크립트**: `scripts/create-multiple-databases.sh`는 볼륨이 비어있을 때만 실행. DB 추가 시 `make down-v` 필요
-- **학습 시 S3 인증**: 로컬에서 `make train` 실행 시 MinIO 인증 환경변수 필요:
-  `MLFLOW_S3_ENDPOINT_URL=http://localhost:9000 AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin123`
-- **MLflow DNS Rebinding 방어**: MLflow 3.x는 Host 헤더 검증으로 DNS rebinding 공격 차단. Docker 내부 호스트명(`mlflow:5000`) 사용 시 `MLFLOW_SERVER_ALLOWED_HOSTS` 환경변수 필요
-- **`/model/reload` 멀티워커 제약**: Gunicorn 워커 N개 중 reload 요청을 받은 워커에만 적용. 전체 워커에 적용하려면 컨테이너 재시작 또는 `GUNICORN_WORKERS=1` 설정
