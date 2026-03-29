@@ -1,0 +1,124 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: mlops-alerts
+    folder: MLOps
+    interval: 1m
+    rules:
+      # Alert 1: Drift score exceeds threshold
+      - uid: drift-score-warning
+        title: "Drift Score Warning"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: evidently_drift_score
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.3
+                    type: gt
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Data drift score ({{ $value }}) exceeds 0.3 threshold"
+          description: "Evidently detected significant distribution drift. Check the drift report in MinIO (drift-reports bucket)."
+        labels:
+          severity: warning
+
+      # Alert 2: High API error rate
+      - uid: api-error-rate-critical
+        title: "API Error Rate Critical"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum(rate(http_requests_total{status=~"5.."}[5m]))
+                /
+                sum(rate(http_requests_total[5m]))
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.05
+                    type: gt
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "API 5xx error rate ({{ $value | humanizePercentage }}) exceeds 5%"
+          description: "The inference API is returning a high rate of server errors. Check API logs."
+        labels:
+          severity: critical
+
+      # Alert 3: High API latency
+      - uid: api-latency-warning
+        title: "API Latency Warning"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.99,
+                  sum(rate(http_request_duration_seconds_bucket{handler!="/metrics"}[5m])) by (le)
+                )
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    params:
+                      - 2.0
+                    type: gt
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        annotations:
+          summary: "API p99 latency ({{ $value | humanizeDuration }}) exceeds 2s"
+          description: "The inference API p99 latency is high. Consider scaling workers or optimizing the model."
+        labels:
+          severity: warning

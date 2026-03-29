@@ -5,22 +5,23 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+from src.common.device import resolve_device
 from src.monitoring.metrics import setup_metrics
 from src.monitoring.prediction_logger import PredictionLogger
 from src.serving.api.config import ServingConfig
 from src.serving.api.dependencies import (
     ModelState,
     load_model_from_registry,
-    resolve_device,
 )
 from src.serving.api.routes import router
+from src.serving.reload_sync import ReloadSubscriber
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +58,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         secret_key=os.environ["AWS_SECRET_ACCESS_KEY"],
     )
 
+    # Start Redis Pub/Sub subscriber for cross-worker model reload sync
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+
+    def _handle_remote_reload(payload: dict[str, Any]) -> None:
+        """Reload model when notified by another worker."""
+        target_name = payload.get("model_name", config.model_name)
+        target_version = payload.get("model_version", config.model_version)
+        logger.info("Remote reload triggered: %s version %s", target_name, target_version)
+        try:
+            new_state = load_model_from_registry(
+                model_name=target_name,
+                model_version=target_version,
+                mlflow_tracking_uri=config.mlflow_tracking_uri,
+                device=device,
+                image_size=config.image_size,
+            )
+            app.state.model_state = new_state
+            logger.info("Remote reload complete: %s version %s", target_name, target_version)
+        except Exception:
+            logger.exception("Remote reload failed for %s version %s", target_name, target_version)
+
+    reload_subscriber = ReloadSubscriber(redis_url=redis_url, on_reload=_handle_remote_reload)
+    reload_subscriber.start()
+    app.state.reload_subscriber = reload_subscriber
+
     yield
 
     logger.info("Shutting down, releasing model resources")
+    reload_subscriber.stop()
     app.state.prediction_logger.flush()
     app.state.model_state = ModelState()
 

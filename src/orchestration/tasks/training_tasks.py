@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from prefect import task
+from prefect.artifacts import create_markdown_artifact
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def train_model(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     experiment_name: str = "default-classification",
-    mlflow_tracking_uri: str = "http://localhost:5050",
+    mlflow_tracking_uri: str = "http://localhost:5000",
     registered_model_name: str | None = None,
 ) -> dict[str, float]:
     """Run model training with MLflow tracking.
@@ -55,4 +56,18 @@ def train_model(
 
     metrics = train(config)
     logger.info("Training complete: %s", metrics)
+
+    # Create Prefect artifact for training results
+    metric_rows = ""
+    for key, value in metrics.items():
+        metric_rows += f"| {key} | {value:.4f} |\n"
+
+    markdown = f"""## Training Results
+| Metric | Value |
+|--------|-------|
+{metric_rows}
+**Model:** {model_name} | **Epochs:** {epochs} | **Batch Size:** {batch_size}
+"""
+    create_markdown_artifact(key="training-results", markdown=markdown)
+
     return metrics

@@ -43,7 +43,7 @@ def main() -> None:
     parser.add_argument("--experiment-name", type=str, default="default-classification")
     parser.add_argument("--registered-model-name", type=str, default=None)
     parser.add_argument("--min-health-score", type=float, default=0.5)
-    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://localhost:5050")
+    parser.add_argument("--mlflow-tracking-uri", type=str, default="http://localhost:5000")
 
     args = parser.parse_args()
 

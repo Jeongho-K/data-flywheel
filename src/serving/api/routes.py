@@ -141,6 +141,13 @@ async def model_reload(request: Request, body: ModelReloadRequest) -> ModelReloa
 
     request.app.state.model_state = new_state
 
+    # Notify other Gunicorn workers via Redis Pub/Sub
+    reload_subscriber = getattr(request.app.state, "reload_subscriber", None)
+    if reload_subscriber is not None and reload_subscriber.is_active:
+        reload_subscriber.publish_reload(
+            {"model_name": target_name, "model_version": target_version}
+        )
+
     return ModelReloadResponse(
         status="ok",
         message=f"Reloaded model '{target_name}' version '{target_version}'",

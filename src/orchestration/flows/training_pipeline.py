@@ -57,7 +57,7 @@ def training_pipeline(
     batch_size: int = 32,
     learning_rate: float = 1e-3,
     experiment_name: str = "default-classification",
-    mlflow_tracking_uri: str = "http://localhost:5050",
+    mlflow_tracking_uri: str = "http://localhost:5000",
     registered_model_name: str | None = None,
     min_health_score: float = 0.5,
     run_label_validation: bool = False,
@@ -162,7 +162,7 @@ def _run_post_hoc_label_validation(
 
     model_uri = f"models:/{registered_model_name}@challenger"
 
-    from src.training.trainers.classification_trainer import resolve_device
+    from src.common.device import resolve_device
 
     device = str(resolve_device("auto"))
     label_metrics = validate_labels_task(

@@ -145,7 +145,27 @@ def run_drift_detection(
         pushgateway_url=pushgateway_url,
         drift_detected=result["drift_detected"],
         drift_score=result["drift_score"],
+        column_drifts=result.get("column_drifts"),
     )
+
+    # Create Prefect artifact for drift detection results
+    column_rows = ""
+    for col, score in result.get("column_drifts", {}).items():
+        column_rows += f"| {col} | {score:.4f} |\n"
+
+    status_emoji = "DRIFT DETECTED" if result["drift_detected"] else "No Drift"
+    markdown = f"""## Drift Detection Results: {status_emoji}
+| Metric | Value |
+|--------|-------|
+| Drift Detected | {result["drift_detected"]} |
+| Drift Score | {result["drift_score"]:.4f} |
+
+### Per-Column Drift Scores
+| Column | Score |
+|--------|-------|
+{column_rows}"""
+    create_markdown_artifact(key="drift-detection-results", markdown=markdown)
+
     return result
 
 

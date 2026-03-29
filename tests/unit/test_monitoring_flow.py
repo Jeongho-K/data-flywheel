@@ -209,6 +209,7 @@ class TestRunDriftDetection:
                 return_value=mock_result,
             ) as mock_detect,
             patch("src.orchestration.flows.monitoring_flow.push_drift_metrics") as mock_push,
+            patch("src.orchestration.flows.monitoring_flow.create_markdown_artifact"),
         ):
             result = run_drift_detection.fn(
                 reference=self._make_df(),
@@ -221,6 +222,7 @@ class TestRunDriftDetection:
             pushgateway_url="http://pushgateway:9091",
             drift_detected=False,
             drift_score=0.0,
+            column_drifts={},
         )
         assert result == mock_result
 
@@ -238,6 +240,7 @@ class TestRunDriftDetection:
                 return_value=mock_result,
             ),
             patch("src.orchestration.flows.monitoring_flow.push_drift_metrics"),
+            patch("src.orchestration.flows.monitoring_flow.create_markdown_artifact"),
         ):
             result = run_drift_detection.fn(
                 reference=self._make_df(),

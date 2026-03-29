@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from src.serving.api.dependencies import ModelState, _detect_num_classes, resolve_device
+from src.common.device import resolve_device
+from src.serving.api.dependencies import ModelState, _detect_num_classes
 
 
 class TestModelState:
@@ -30,14 +31,14 @@ class TestResolveDevice:
         device = resolve_device("cpu")
         assert device == torch.device("cpu")
 
-    @patch("src.serving.api.dependencies.torch.cuda.is_available", return_value=True)
+    @patch("src.common.device.torch.cuda.is_available", return_value=True)
     def test_auto_with_cuda(self, _mock_cuda) -> None:
         """Auto should prefer CUDA when available."""
         device = resolve_device("auto")
         assert device == torch.device("cuda")
 
-    @patch("src.serving.api.dependencies.torch.cuda.is_available", return_value=False)
-    @patch("src.serving.api.dependencies.torch.backends.mps.is_available", return_value=False)
+    @patch("src.common.device.torch.cuda.is_available", return_value=False)
+    @patch("src.common.device.torch.backends.mps.is_available", return_value=False)
     def test_auto_fallback_cpu(self, _mock_mps, _mock_cuda) -> None:
         """Auto should fall back to CPU when no GPU available."""
         device = resolve_device("auto")

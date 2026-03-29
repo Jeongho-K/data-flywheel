@@ -35,7 +35,7 @@ class TrainConfig(BaseSettings):
 
     # MLflow
     experiment_name: str = Field(default="default-classification", description="MLflow experiment name")
-    mlflow_tracking_uri: str = Field(default="http://localhost:5050", description="MLflow server URI")
+    mlflow_tracking_uri: str = Field(default="http://localhost:5000", description="MLflow server URI")
     registered_model_name: str | None = Field(default=None, description="Model registry name (None = skip)")
 
     # Device

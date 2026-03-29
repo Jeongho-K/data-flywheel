@@ -156,18 +156,25 @@ def check_drift_threshold(
     }
 
 
-def push_drift_metrics(pushgateway_url: str, drift_detected: bool, drift_score: float) -> None:
+def push_drift_metrics(
+    pushgateway_url: str,
+    drift_detected: bool,
+    drift_score: float,
+    column_drifts: dict[str, float] | None = None,
+) -> None:
     """Push drift metrics to a Prometheus Pushgateway.
 
     Creates an isolated CollectorRegistry to avoid conflicts with the default
-    global registry. Pushes two gauges:
+    global registry. Pushes the following gauges:
         - evidently_drift_detected: 1.0 if drift was detected, else 0.0
         - evidently_drift_score: Share of drifted columns (0.0–1.0)
+        - evidently_column_drift_score: Per-column drift scores (labeled by column name)
 
     Args:
         pushgateway_url: URL of the Prometheus Pushgateway (e.g. ``http://pushgateway:9091``).
         drift_detected: Whether dataset-level drift was detected.
         drift_score: Share of drifted columns (0.0–1.0).
+        column_drifts: Per-column drift scores from detect_drift(). None skips per-column push.
     """
     registry = CollectorRegistry()
 
@@ -185,9 +192,20 @@ def push_drift_metrics(pushgateway_url: str, drift_detected: bool, drift_score: 
     g_detected.set(1.0 if drift_detected else 0.0)
     g_score.set(drift_score)
 
+    if column_drifts:
+        g_column = Gauge(
+            "evidently_column_drift_score",
+            "Per-column drift score",
+            labelnames=["column"],
+            registry=registry,
+        )
+        for column_name, column_score in column_drifts.items():
+            g_column.labels(column=column_name).set(column_score)
+
     push_to_gateway(pushgateway_url, job="evidently_drift", registry=registry)
     logger.info(
-        "Pushed drift metrics to Pushgateway: drift_detected=%s drift_score=%.4f",
+        "Pushed drift metrics to Pushgateway: drift_detected=%s drift_score=%.4f columns=%d",
         drift_detected,
         drift_score,
+        len(column_drifts) if column_drifts else 0,
     )

@@ -65,9 +65,11 @@ def validate_images(data_dir: str) -> dict[str, Any]:
         and 'issue_{type}' counts.
     """
     from src.data.validation import validate_image_dataset
+    from src.data.validation.config import ValidationConfig
 
+    config = ValidationConfig()
     train_dir = Path(data_dir) / "train"
-    report = validate_image_dataset(train_dir)
+    report = validate_image_dataset(train_dir, issue_types=config.issue_types)
     logger.info(
         "Image validation: %d images, %d issues, health=%.2f",
         report.total_images,
