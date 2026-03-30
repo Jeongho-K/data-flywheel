@@ -995,6 +995,77 @@ wheels = [
 ]
 
 [[package]]
+name = "data-flywheel"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "boto3" },
+    { name = "cleanlab" },
+    { name = "cleanvision" },
+    { name = "dvc", extra = ["s3"] },
+    { name = "evidently" },
+    { name = "fastapi" },
+    { name = "gunicorn" },
+    { name = "httpx" },
+    { name = "mlflow" },
+    { name = "numpy" },
+    { name = "nvidia-ml-py" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "prefect" },
+    { name = "prometheus-client" },
+    { name = "prometheus-fastapi-instrumentator" },
+    { name = "psutil" },
+    { name = "pydantic-settings" },
+    { name = "python-multipart" },
+    { name = "redis" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "httpx" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "cleanlab", specifier = ">=2.7" },
+    { name = "cleanvision", specifier = ">=0.3.6" },
+    { name = "dvc", extras = ["s3"], specifier = ">=3.55" },
+    { name = "evidently", specifier = ">=0.5" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "gunicorn", specifier = ">=22.0" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mlflow", specifier = ">=3.10" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "nvidia-ml-py", specifier = ">=12.0" },
+    { name = "pandas", specifier = ">=2.2" },
+    { name = "pillow", specifier = ">=11.0" },
+    { name = "prefect", specifier = ">=3.0" },
+    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "prometheus-fastapi-instrumentator", specifier = ">=7.0" },
+    { name = "psutil", specifier = ">=6.0" },
+    { name = "pydantic-settings", specifier = ">=2.7" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
+    { name = "redis", specifier = ">=5.0" },
+    { name = "torch", specifier = ">=2.6" },
+    { name = "torchvision", specifier = ">=0.21" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.8" },
+]
+
+[[package]]
 name = "databricks-sdk"
 version = "0.102.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2653,77 +2724,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/06/7a/4c3c1b7a52a5956b1af81bdd90892019d5927460d520bd4f52063f423029/mlflow_tracing-3.10.1.tar.gz", hash = "sha256:9e54d63cf776d29bb9e2278d35bf27352b93f7b35c8fe8452e9ba5e2a3c5b78f", size = 1243515, upload-time = "2026-03-05T10:46:29.164Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b6/9a/7ac1db2ed7b5e21c50fadf925a53f0c77452a8a855ee4a119b084c2fa5d3/mlflow_tracing-3.10.1-py3-none-any.whl", hash = "sha256:649c722cc58d54f1f40559023a6bd6f3f08150c3ce3c3bb27972b3e795890f47", size = 1495173, upload-time = "2026-03-05T10:46:27.395Z" },
-]
-
-[[package]]
-name = "mlops-pipeline"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "boto3" },
-    { name = "cleanlab" },
-    { name = "cleanvision" },
-    { name = "dvc", extra = ["s3"] },
-    { name = "evidently" },
-    { name = "fastapi" },
-    { name = "gunicorn" },
-    { name = "httpx" },
-    { name = "mlflow" },
-    { name = "numpy" },
-    { name = "nvidia-ml-py" },
-    { name = "pandas" },
-    { name = "pillow" },
-    { name = "prefect" },
-    { name = "prometheus-client" },
-    { name = "prometheus-fastapi-instrumentator" },
-    { name = "psutil" },
-    { name = "pydantic-settings" },
-    { name = "python-multipart" },
-    { name = "redis" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "boto3", specifier = ">=1.35" },
-    { name = "cleanlab", specifier = ">=2.7" },
-    { name = "cleanvision", specifier = ">=0.3.6" },
-    { name = "dvc", extras = ["s3"], specifier = ">=3.55" },
-    { name = "evidently", specifier = ">=0.5" },
-    { name = "fastapi", specifier = ">=0.115" },
-    { name = "gunicorn", specifier = ">=22.0" },
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "mlflow", specifier = ">=3.10" },
-    { name = "numpy", specifier = ">=2.0" },
-    { name = "nvidia-ml-py", specifier = ">=12.0" },
-    { name = "pandas", specifier = ">=2.2" },
-    { name = "pillow", specifier = ">=11.0" },
-    { name = "prefect", specifier = ">=3.0" },
-    { name = "prometheus-client", specifier = ">=0.21" },
-    { name = "prometheus-fastapi-instrumentator", specifier = ">=7.0" },
-    { name = "psutil", specifier = ">=6.0" },
-    { name = "pydantic-settings", specifier = ">=2.7" },
-    { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "redis", specifier = ">=5.0" },
-    { name = "torch", specifier = ">=2.6" },
-    { name = "torchvision", specifier = ">=0.21" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "pytest", specifier = ">=8.0" },
-    { name = "ruff", specifier = ">=0.8" },
 ]
 
 [[package]]

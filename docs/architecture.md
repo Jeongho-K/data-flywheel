@@ -120,7 +120,7 @@ MLflow Model Registry에서 모델을 로드하고, 무중단 모델 교체(hot 
 ## 프로젝트 구조
 
 ```
-MLOps-Pipeline/
+data-flywheel/
 ├── docker-compose.yml        # 전체 서비스 정의
 ├── Makefile                  # 공통 명령어
 ├── pyproject.toml            # Python 프로젝트 설정

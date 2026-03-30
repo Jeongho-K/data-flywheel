@@ -1,4 +1,4 @@
-# MLOps Pipeline
+# Data Flywheel
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.6-EE4C2C?logo=pytorch&logoColor=white)
@@ -9,9 +9,11 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 
-> 온프레미스 환경을 위한 범용 컴퓨터 비전 MLOps 파이프라인 템플릿.
-> 이미지 분류, 객체 탐지, 세그멘테이션 워크플로우를 지원합니다.
-> 학습부터 서빙, 모니터링까지 ML 모델의 전체 라이프사이클을 관리합니다.
+> 대부분의 MLOps 파이프라인은 deploy에서 끝난다. data-flywheel은 거기서 시작한다.
+>
+> 서빙 중인 모든 예측을 학습 자산으로 전환하는 폐루프 ML 플랫폼.
+> High confidence → 자동 축적, Low confidence → human review, 그리고 자동 재학습.
+> 온프레미스, CV-first, domain-agnostic by design.
 
 ## 주요 특징
 
@@ -80,7 +82,7 @@
 
 ```bash
 git clone <repo-url>
-cd MLOps-Pipeline
+cd data-flywheel
 
 # Python 의존성 설치
 uv sync

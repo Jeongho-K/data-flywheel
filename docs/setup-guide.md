@@ -16,8 +16,8 @@
 
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/Jeongho-K/MLOps-Pipeline.git
-cd MLOps-Pipeline
+git clone https://github.com/Jeongho-K/data-flywheel.git
+cd data-flywheel
 
 # 2. Python 의존성 설치
 uv sync

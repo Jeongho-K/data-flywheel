@@ -150,7 +150,7 @@
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "MLOps Pipeline Overview",
+  "title": "Data Flywheel Overview",
   "uid": "mlops-overview",
   "version": 1
 }

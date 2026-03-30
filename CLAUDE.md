@@ -163,7 +163,7 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 ### Current (pre-Phase D refactoring)
 
 ```
-MLOps-Pipeline/
+data-flywheel/
 ├── CLAUDE.md                 # This file — project philosophy + rules
 ├── README.md                 # Project intro + docs links (Korean)
 ├── docker-compose.yml        # All services

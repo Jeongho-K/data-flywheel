@@ -133,7 +133,7 @@ def create_app(config: ServingConfig | None = None, *, enable_lifespan: bool = T
         config = ServingConfig()
 
     app = FastAPI(
-        title="MLOps Pipeline - Inference API",
+        title="Data Flywheel - Inference API",
         description="Image classification inference API with MLflow model registry integration.",
         version="0.1.0",
         lifespan=lifespan if enable_lifespan else None,

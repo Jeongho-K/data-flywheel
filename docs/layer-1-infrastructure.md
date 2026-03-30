@@ -33,7 +33,7 @@ graph TB
 
 ### MinIO
 
-- **이미지:** `mlops-pipeline/minio:2025.09.07` (커스텀 빌드: `docker/minio/Dockerfile`)
+- **이미지:** `data-flywheel/minio:2025.09.07` (커스텀 빌드: `docker/minio/Dockerfile`)
 - **용도:** S3 호환 오브젝트 스토리지 (MLflow 아티팩트, DVC 데이터, 모델 레지스트리)
 - **버킷:** (총 5개, 커스텀 이미지의 entrypoint가 시작 시 자동 생성)
   - `mlflow-artifacts` — MLflow 실험 아티팩트

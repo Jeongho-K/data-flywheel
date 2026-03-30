@@ -1,7 +1,7 @@
 [project]
-name = "mlops-pipeline"
+name = "data-flywheel"
 version = "0.1.0"
-description = "General-purpose CV MLOps pipeline template for on-premises deployment"
+description = "Self-improving ML platform with closed-loop data flywheel — on-premises, CV-first, domain-agnostic"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 dependencies = [

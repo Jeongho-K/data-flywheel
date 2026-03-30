@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify MLOps Pipeline infrastructure is working correctly.
+# Verify Data Flywheel infrastructure is working correctly.
 # Run after `make up` when all services are healthy.
 
 set -eu
@@ -21,7 +21,7 @@ check() {
     fi
 }
 
-echo "=== MLOps Pipeline Verification ==="
+echo "=== Data Flywheel Verification ==="
 echo ""
 
 echo "[Phase 1: Infrastructure — Services Health]"

@@ -1,7 +1,7 @@
 """Prepare demo dataset for the image classification pipeline.
 
 Downloads a small subset of CIFAR-10 and organizes it into the expected
-directory structure for the MLOps pipeline:
+directory structure for the data-flywheel pipeline:
 
     data/raw/cifar10-demo/
     ├── train/

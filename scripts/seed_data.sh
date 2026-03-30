@@ -1,10 +1,10 @@
 #!/bin/bash
-# Initialize MLOps Pipeline with default MLflow experiments and verify service health.
+# Initialize Data Flywheel with default MLflow experiments and verify service health.
 # Run after `make up` when all services are healthy.
 
 set -eu
 
-echo "=== MLOps Pipeline Seed Data ==="
+echo "=== Data Flywheel Seed Data ==="
 
 # Check that ALL required services are healthy
 echo "[1/3] Checking services..."
