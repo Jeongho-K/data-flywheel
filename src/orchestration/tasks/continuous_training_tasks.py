@@ -369,6 +369,7 @@ def integrate_training_data(
 
     # --- Path 1: Human-labeled annotations from Label Studio ---
     human_count = 0
+    human_fetch_failed = False
     try:
         bridge = LabelStudioBridge(
             base_url=label_studio_url,
@@ -394,10 +395,12 @@ def integrate_training_data(
                 human_count += 1
 
     except Exception:
+        human_fetch_failed = True
         logger.warning("Failed to fetch human annotations from Label Studio.", exc_info=True)
 
     # --- Path 2: Auto-accumulated pseudo-labels from S3 ---
     pseudo_count = 0
+    pseudo_fetch_failed = False
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=accumulation_bucket, Prefix=accumulation_prefix):
@@ -423,7 +426,16 @@ def integrate_training_data(
                         pseudo_count += 1
 
     except Exception:
+        pseudo_fetch_failed = True
         logger.warning("Failed to fetch pseudo-labels from S3.", exc_info=True)
+
+    # If both data sources failed, raise so the pipeline retries rather than
+    # silently treating an infrastructure outage as "no data available".
+    if human_fetch_failed and pseudo_fetch_failed:
+        raise RuntimeError(
+            "Both data sources (Label Studio and S3 pseudo-labels) failed. "
+            "Cannot determine if data is available. Check connectivity."
+        )
 
     if not samples:
         logger.warning("No samples collected for data integration.")

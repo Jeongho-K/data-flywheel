@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -52,4 +52,7 @@ async def trigger_retraining(
 
     except Exception:
         logger.exception("Failed to trigger retraining manually.")
-        return {"status": "error", "message": "Failed to trigger deployment. Check Prefect server."}
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to trigger deployment. Check Prefect server.",
+        )
