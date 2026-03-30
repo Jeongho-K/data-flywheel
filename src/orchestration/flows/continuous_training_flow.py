@@ -282,7 +282,7 @@ def _version_data(
         dvc.version_round(
             data_dir=merged_data_dir,
             round_num=round_num,
-            mlflow_uri=mlflow_tracking_uri,
+            mlflow_tracking_uri=mlflow_tracking_uri,
         )
         logger.info("DVC versioning complete for round %d", round_num)
     except Exception:
