@@ -20,6 +20,7 @@ from src.active_learning.uncertainty.softmax_entropy import SoftmaxEntropyEstima
 from src.common.device import resolve_device
 from src.monitoring.metrics import setup_metrics
 from src.monitoring.prediction_logger import PredictionLogger
+from src.serving.api.admin import admin_router
 from src.serving.api.config import ServingConfig
 from src.serving.api.dependencies import (
     ModelState,
@@ -146,6 +147,7 @@ def create_app(config: ServingConfig | None = None, *, enable_lifespan: bool = T
 
     app.include_router(router)
     app.include_router(webhook_router)
+    app.include_router(admin_router)
     setup_metrics(app)
 
     return app

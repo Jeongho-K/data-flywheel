@@ -30,7 +30,8 @@ def train(config: TrainConfig) -> dict[str, float]:
         config: Training configuration.
 
     Returns:
-        Dictionary with keys 'val_loss', 'val_accuracy' (final epoch),
+        Dictionary with keys 'train_loss', 'train_accuracy' (final epoch),
+        'val_loss', 'val_accuracy' (final epoch),
         and 'best_val_accuracy' (best across all epochs).
 
     Raises:
@@ -115,6 +116,8 @@ def train(config: TrainConfig) -> dict[str, float]:
 
         best_val_acc = 0.0
         best_state_dict: dict[str, torch.Tensor] | None = None
+        train_loss = 0.0
+        train_acc = 0.0
         val_loss = 0.0
         val_acc = 0.0
 
@@ -219,7 +222,13 @@ def train(config: TrainConfig) -> dict[str, float]:
 
         logger.info("Run %s complete. Best val accuracy: %.4f", run.info.run_id, best_val_acc)
 
-    return {"val_loss": val_loss, "val_accuracy": val_acc, "best_val_accuracy": best_val_acc}
+    return {
+        "train_loss": train_loss,
+        "train_accuracy": train_acc,
+        "val_loss": val_loss,
+        "val_accuracy": val_acc,
+        "best_val_accuracy": best_val_acc,
+    }
 
 
 def _run_epoch(

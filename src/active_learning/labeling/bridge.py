@@ -140,6 +140,18 @@ class LabelStudioBridge:
             )
             raise
 
+    def get_annotation_count(self, project_id: int | None = None) -> int:
+        """Get the number of tasks with completed annotations.
+
+        Args:
+            project_id: Project ID to query. Defaults to the configured project.
+
+        Returns:
+            Number of tasks with at least one annotation.
+        """
+        stats = self.get_project_stats(project_id)
+        return stats.get("num_tasks_with_annotations", 0)
+
     def close(self) -> None:
         """Close the HTTP client."""
         self._client.close()

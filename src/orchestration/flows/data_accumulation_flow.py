@@ -63,6 +63,7 @@ def data_accumulation_flow(
     existing_data_count: int = 0,
     max_pseudo_label_ratio: float = 0.3,
     min_samples: int = 50,
+    trigger_retraining: bool = True,
 ) -> dict:
     """Data Accumulation pipeline: fetch pseudo-labels, validate, and report.
 
@@ -72,8 +73,9 @@ def data_accumulation_flow(
         3. If valid, cleanup processed files
         4. Return summary stats
 
-    NOTE: Actual merging into training data and DVC versioning is deferred
-    to Phase B when the training pipeline integrates with accumulated data.
+    When quality gate passes and ``trigger_retraining`` is True, triggers
+    the continuous training deployment to merge accumulated data into
+    training and retrain the model.
 
     Args:
         s3_endpoint: S3-compatible endpoint URL.
@@ -84,6 +86,7 @@ def data_accumulation_flow(
         existing_data_count: Number of existing training samples for ratio check.
         max_pseudo_label_ratio: Maximum pseudo-label ratio in total training data.
         min_samples: Minimum number of accumulated samples required.
+        trigger_retraining: If True, trigger continuous training when quality gate passes.
 
     Returns:
         Dictionary with pipeline summary including quality gate results.
@@ -145,6 +148,11 @@ def data_accumulation_flow(
         keys=s3_keys if s3_keys else None,
     )
 
+    # Trigger continuous training if enabled
+    retraining_triggered = False
+    if trigger_retraining:
+        retraining_triggered = _trigger_retraining()
+
     summary = {
         "status": "completed",
         "total_samples": len(samples),
@@ -152,6 +160,7 @@ def data_accumulation_flow(
         "reason": quality_result["reason"],
         "stats": quality_result.get("stats", {}),
         "files_cleaned": files_cleaned,
+        "retraining_triggered": retraining_triggered,
     }
 
     _create_summary_artifact(summary)
@@ -190,3 +199,27 @@ def _create_summary_artifact(summary: dict) -> None:
 |------|-------|
 {stats_rows}"""
     create_markdown_artifact(key="data-accumulation-summary", markdown=markdown)
+
+
+def _trigger_retraining() -> bool:
+    """Trigger the continuous training deployment after successful accumulation.
+
+    Returns:
+        True if the deployment was triggered successfully, False otherwise.
+    """
+    try:
+        from prefect.deployments import run_deployment
+
+        from src.orchestration.config import ContinuousTrainingConfig
+
+        config = ContinuousTrainingConfig()
+        run_deployment(
+            name=config.deployment_name,
+            parameters={"trigger_source": "data_accumulated"},
+            timeout=0,
+        )
+        logger.info("Triggered continuous training due to data accumulation.")
+        return True
+    except Exception:
+        logger.warning("Failed to trigger retraining on data accumulation.", exc_info=True)
+        return False

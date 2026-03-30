@@ -79,31 +79,11 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 ### Functional Pillars (4-Pillar) — See "Core Philosophy" section above
 
-6-Layer(인프라)와 4-Pillar(기능)는 대체가 아닌 보완 관계:
-- 6-Layer = **어떤 기술로** 구성되는가 (infra view)
-- 4-Pillar = **왜, 어떤 역할로** 존재하는가 (functional view)
+6-Layer(인프라 뷰)와 4-Pillar(기능 뷰)는 보완 관계. 개발 시 양쪽 모두 준수.
 
-모든 개발은 4-Pillar의 역할에 부합하도록, 6-Layer의 의존성 규칙을 준수하며 진행한다.
+## Tech Stack
 
-## Tech Stack (Pinned Versions)
-
-| Component | Version / Image | Notes |
-|---|---|---|
-| PostgreSQL | `postgres:16.6-alpine` | |
-| MinIO Server | `minio/minio:RELEASE.2025-09-07T16-13-09Z` | |
-| MinIO Client | `minio/mc:RELEASE.2025-08-13T08-35-41Z` | Bucket init only |
-| MLflow | `docker/mlflow/Dockerfile` (base: `ghcr.io/mlflow/mlflow:v3.10.1`) | Custom build: +psycopg2-binary +boto3 |
-| Prefect | `prefecthq/prefect:3.6.23-python3.11` | Requires explicit `command` |
-| Redis | `redis:7.4-alpine` | |
-| Nginx | `nginx:1.28.1-alpine` | Reverse proxy + canary |
-| FastAPI | `fastapi>=0.115` + `uvicorn>=0.30` + `gunicorn>=22.0` | Serving layer |
-| Prometheus | `prom/prometheus:v3.10.0` | Metrics collection |
-| Pushgateway | `prom/pushgateway:v1.11.0` | Batch metrics |
-| Grafana | `grafana/grafana-oss:12.4.1` | Dashboards + alerting |
-| Label Studio | `heartexlabs/label-studio:1.19.0` | HITL labeling, PostgreSQL backend |
-| Python | 3.11.x | |
-| PyTorch | 2.6.x | Training |
-| CUDA | `nvidia/cuda:12.6.3-runtime-ubuntu22.04` | GPU training |
+Versions are pinned in `docker-compose.yml` (infra) and `pyproject.toml` (Python deps). Python 3.11.x.
 
 ## Coding Standards
 
@@ -141,15 +121,13 @@ Layer 1: Infrastructure— Docker Compose, PostgreSQL, MinIO, Redis
 
 ## MCP 도구 활용
 
-계획 및 개발 중 추측하지 말고 MCP 도구로 확인한다:
-- **Context7**: 라이브러리 API, 설정 방법, Docker 이미지 사용법 등 공식 문서 조회
-- **Tavily**: Docker Hub 태그 존재 여부, 최신 버전, 호환성 등 웹 검색
-- **Hugging Face**: 모델, 데이터셋 검색
+**추측하지 말고 MCP 도구로 확인한다.** 사용 가능한 MCP 도구가 있으면 적극 활용할 것:
+- **Context7**: 라이브러리/프레임워크 공식 문서 조회 (API, 설정, 마이그레이션 등)
+- **Tavily**: 웹 검색, 최신 정보 확인, 에러 해결책 탐색
+- **Hugging Face**: 모델, 데이터셋, 논문 검색
+- **기타 MCP 도구**: 사용 가능한 도구가 있으면 상황에 맞게 활용
 
-활용 시점:
-- Docker 이미지 태그를 지정할 때 → Tavily로 실제 존재 여부 확인
-- 프레임워크 설정이 불확실할 때 → Context7으로 공식 문서 조회
-- 에러 발생 시 → Tavily/Context7으로 해결책 검색
+원칙: 확실하지 않으면 MCP 도구로 먼저 확인하고 작업한다.
 
 ## Documentation
 
@@ -187,23 +165,4 @@ data-flywheel/
 └── docs/                     # Documentation (Korean)
 ```
 
-### Target (after Phase D — Domain-Agnostic restructure)
-
-```
-src/
-├── core/                     # Framework (domain-agnostic)
-│   ├── active_learning/      # Uncertainty routing, sample selection interfaces
-│   ├── orchestration/        # Prefect flows
-│   ├── monitoring/           # Metrics, drift detection
-│   ├── serving/              # FastAPI app, model loading
-│   └── ci/                   # Quality gates, evaluation
-├── plugins/                  # Domain-specific implementations
-│   └── cv/                   # CV Plugin (first implementation)
-│       ├── uncertainty.py    # Softmax entropy estimator
-│       ├── validator.py      # CleanVision + CleanLab
-│       ├── trainer.py        # PyTorch classification trainer
-│       ├── selector.py       # Uncertainty-based sample selector
-│       ├── transforms.py     # Image preprocessing
-│       └── models/           # CNN architectures
-└── common/                   # Shared utilities
-```
+Phase D target structure is documented in `docs/specs/2026-03-29-active-learning-first-mlops-design.md`.

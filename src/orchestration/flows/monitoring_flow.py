@@ -278,6 +278,7 @@ def monitoring_pipeline(
     lookback_days: int | None = None,
     pushgateway_url: str | None = None,
     fail_on_drift: bool = False,
+    trigger_retraining_on_drift: bool = True,
 ) -> dict[str, Any]:
     """Run the full drift monitoring pipeline.
 
@@ -302,6 +303,8 @@ def monitoring_pipeline(
         pushgateway_url: URL of the Prometheus Pushgateway.
         fail_on_drift: If True, raise RuntimeError when drift exceeds threshold.
             Defaults to False (log warning and continue).
+        trigger_retraining_on_drift: If True, trigger continuous training
+            deployment when drift is detected. Defaults to True.
 
     Returns:
         Dictionary with drift detection results and the uploaded report S3 key.
@@ -363,6 +366,7 @@ def monitoring_pipeline(
     )
 
     # Step 4.5: Run drift quality gate (pass/fail based on threshold)
+    drift_gate_failed = False
     try:
         gate_result = run_drift_quality_gate(
             reference=reference_filtered,
@@ -370,6 +374,7 @@ def monitoring_pipeline(
         )
         logger.info("Drift quality gate passed: %s", gate_result)
     except RuntimeError:
+        drift_gate_failed = True
         if fail_on_drift:
             raise
         logger.warning("Drift quality gate failed — continuing with report upload.", exc_info=True)
@@ -384,6 +389,10 @@ def monitoring_pipeline(
         secret_key=s3_secret_key,
     )
 
+    # Step 6: Trigger retraining if drift detected
+    if drift_gate_failed and trigger_retraining_on_drift:
+        _trigger_retraining_on_drift()
+
     result: dict[str, Any] = {
         **drift_result,
         "report_s3_key": report_key,
@@ -391,3 +400,24 @@ def monitoring_pipeline(
     }
     logger.info("Monitoring pipeline complete: %s", result)
     return result
+
+
+def _trigger_retraining_on_drift() -> None:
+    """Trigger the continuous training deployment when drift is detected.
+
+    Best-effort: logs warning if triggering fails (e.g. deployment not registered).
+    """
+    try:
+        from prefect.deployments import run_deployment
+
+        from src.orchestration.config import ContinuousTrainingConfig
+
+        config = ContinuousTrainingConfig()
+        run_deployment(
+            name=config.deployment_name,
+            parameters={"trigger_source": "drift_detected"},
+            timeout=0,
+        )
+        logger.info("Triggered continuous training due to drift detection.")
+    except Exception:
+        logger.warning("Failed to trigger retraining on drift.", exc_info=True)
