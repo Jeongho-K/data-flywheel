@@ -52,6 +52,8 @@ def main() -> None:
     params = {
         "trigger_source": args.trigger_source,
         "s3_endpoint": config.s3_endpoint,
+        "s3_access_key": config.s3_access_key,
+        "s3_secret_key": config.s3_secret_key,
         "merged_data_dir": config.merged_data_dir,
         "train_val_split": config.train_val_split,
         "label_studio_url": config.label_studio_url,

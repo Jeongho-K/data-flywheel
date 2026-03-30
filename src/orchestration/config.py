@@ -88,6 +88,14 @@ class ContinuousTrainingConfig(BaseSettings):
         default="http://minio:9000",
         description="S3-compatible endpoint URL",
     )
+    s3_access_key: str = Field(
+        default="",
+        description="AWS/MinIO access key ID",
+    )
+    s3_secret_key: str = Field(
+        default="",
+        description="AWS/MinIO secret access key",
+    )
 
     # MLflow
     mlflow_tracking_uri: str = Field(
