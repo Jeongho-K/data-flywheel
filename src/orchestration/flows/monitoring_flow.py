@@ -444,9 +444,14 @@ def _trigger_retraining_on_drift() -> None:
 
 
 def _trigger_rollback() -> None:
-    """Rollback to the previous champion model via the reload API.
+    """Request the champion container to reload its current model.
 
-    Best-effort: logs warning if rollback fails.
+    This forces the serving container to re-fetch the @champion model
+    artifact from MLflow, which acts as a safety reload. A full version
+    rollback (reverting the @champion alias to a prior version) is not
+    yet implemented and would require MLflow alias management.
+
+    Best-effort: logs warning if the reload request fails.
     """
     try:
         import httpx

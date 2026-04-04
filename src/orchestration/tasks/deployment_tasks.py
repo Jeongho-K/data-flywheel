@@ -17,7 +17,8 @@ from prefect import task
 
 logger = logging.getLogger(__name__)
 
-_CANARY_TEMPLATE_PATH = Path("configs/nginx/canary.conf.template")
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_CANARY_TEMPLATE_PATH = _PROJECT_ROOT / "configs" / "nginx" / "canary.conf.template"
 _DEFAULT_UPSTREAM_TEMPLATE = "upstream api_backend {\n    server api:8000;\n}\n"
 
 

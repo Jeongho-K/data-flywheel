@@ -119,7 +119,7 @@ def _create_gate_artifact(
         f"| P99 Latency | {_fmt(metrics.get('champion_p99_latency'))} "
         f"| {_fmt(metrics.get('canary_p99_latency'))} |\n"
     )
-    create_markdown_artifact(md, key="g4-canary-gate")
+    create_markdown_artifact(key="g4-canary-gate", markdown=md)
 
 
 def _fmt(value: float | None) -> str:
