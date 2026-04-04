@@ -63,14 +63,18 @@ def deployment_flow(
     """
     config = DeploymentConfig()
 
-    # Apply overrides
-    duration = canary_duration_minutes or config.canary_duration_minutes
-    interval = canary_check_interval_seconds or config.canary_check_interval_seconds
-    c_weight = canary_weight or config.canary_weight
-    ch_weight = champion_weight or config.champion_weight
-    err_ratio = max_error_rate_ratio or config.max_error_rate_ratio
-    lat_ratio = max_latency_ratio or config.max_latency_ratio
-    abs_err = absolute_max_error_rate or config.absolute_max_error_rate
+    # Apply overrides (use 'is not None' to allow explicit 0 / 0.0 values)
+    duration = canary_duration_minutes if canary_duration_minutes is not None else config.canary_duration_minutes
+    interval = (
+        canary_check_interval_seconds
+        if canary_check_interval_seconds is not None
+        else config.canary_check_interval_seconds
+    )
+    c_weight = canary_weight if canary_weight is not None else config.canary_weight
+    ch_weight = champion_weight if champion_weight is not None else config.champion_weight
+    err_ratio = max_error_rate_ratio if max_error_rate_ratio is not None else config.max_error_rate_ratio
+    lat_ratio = max_latency_ratio if max_latency_ratio is not None else config.max_latency_ratio
+    abs_err = absolute_max_error_rate if absolute_max_error_rate is not None else config.absolute_max_error_rate
 
     logger.info(
         "Starting canary deployment (trigger=%s, duration=%dm, weights=%d:%d)",

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from prefect import task
 logger = logging.getLogger(__name__)
 
 _CANARY_TEMPLATE_PATH = Path("configs/nginx/canary.conf.template")
-_DEFAULT_UPSTREAM_TEMPLATE = "upstream api_backend {{\n    server api:8000;\n}}\n"
+_DEFAULT_UPSTREAM_TEMPLATE = "upstream api_backend {\n    server api:8000;\n}\n"
 
 
 @task(name="start-canary-container", retries=1, retry_delay_seconds=10)
@@ -118,17 +119,23 @@ def update_nginx_weights(
     )
 
     # Write config to a temp file and copy into container
-    tmp_path = Path("/tmp/upstream.conf")
-    tmp_path.write_text(config)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".conf", delete=False
+    ) as tmp:
+        tmp.write(config)
+        tmp_path = tmp.name
 
-    _run_cmd(
-        ["docker", "cp", str(tmp_path), f"{nginx_container}:{upstream_path}"],
-        "copy upstream config",
-    )
-    _run_cmd(
-        ["docker", "exec", nginx_container, "nginx", "-s", "reload"],
-        "reload nginx",
-    )
+    try:
+        _run_cmd(
+            ["docker", "cp", tmp_path, f"{nginx_container}:{upstream_path}"],
+            "copy upstream config",
+        )
+        _run_cmd(
+            ["docker", "exec", nginx_container, "nginx", "-s", "reload"],
+            "reload nginx",
+        )
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
 
     logger.info("Nginx configuration updated and reloaded")
 

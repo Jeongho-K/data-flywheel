@@ -7,6 +7,7 @@ container performance during G4 canary gate evaluation.
 from __future__ import annotations
 
 import logging
+import math
 
 import httpx
 
@@ -44,6 +45,9 @@ def _query_prometheus(prometheus_url: str, query: str) -> float | None:
 
         # Instant query returns vector; take first result's value
         value = float(results[0]["value"][1])
+        if math.isnan(value) or math.isinf(value):
+            logger.warning("Prometheus returned non-finite value: %s", value)
+            return None
         return value
 
     except httpx.HTTPError:
