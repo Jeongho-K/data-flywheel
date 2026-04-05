@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.orchestration.tasks.deployment_tasks import (
+from src.core.orchestration.tasks.deployment_tasks import (
     start_canary_container,
     stop_canary_container,
     update_nginx_weights,
@@ -18,7 +18,7 @@ from src.orchestration.tasks.deployment_tasks import (
 class TestStartCanaryContainer:
     """Tests for start_canary_container."""
 
-    @patch("src.orchestration.tasks.deployment_tasks.subprocess.run")
+    @patch("src.core.orchestration.tasks.deployment_tasks.subprocess.run")
     def test_calls_docker_compose_with_canary_profile(
         self, mock_run: MagicMock
     ) -> None:
@@ -31,7 +31,7 @@ class TestStartCanaryContainer:
         assert "canary" in cmd
         assert "api-canary" in cmd
 
-    @patch("src.orchestration.tasks.deployment_tasks.subprocess.run")
+    @patch("src.core.orchestration.tasks.deployment_tasks.subprocess.run")
     def test_raises_on_failure(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=1, stderr="error")
         with pytest.raises(RuntimeError, match="Failed to start canary"):
@@ -41,7 +41,7 @@ class TestStartCanaryContainer:
 class TestWaitForCanaryHealth:
     """Tests for wait_for_canary_health."""
 
-    @patch("src.orchestration.tasks.deployment_tasks.httpx.get")
+    @patch("src.core.orchestration.tasks.deployment_tasks.httpx.get")
     def test_returns_on_healthy_response(self, mock_get: MagicMock) -> None:
         mock_get.return_value = MagicMock(status_code=200)
         # Should not raise
@@ -51,9 +51,9 @@ class TestWaitForCanaryHealth:
             poll_interval=0,
         )
 
-    @patch("src.orchestration.tasks.deployment_tasks.time.sleep")
-    @patch("src.orchestration.tasks.deployment_tasks.time.monotonic")
-    @patch("src.orchestration.tasks.deployment_tasks.httpx.get")
+    @patch("src.core.orchestration.tasks.deployment_tasks.time.sleep")
+    @patch("src.core.orchestration.tasks.deployment_tasks.time.monotonic")
+    @patch("src.core.orchestration.tasks.deployment_tasks.httpx.get")
     def test_raises_on_timeout(
         self, mock_get: MagicMock, mock_time: MagicMock, _mock_sleep: MagicMock
     ) -> None:
@@ -70,7 +70,7 @@ class TestWaitForCanaryHealth:
 class TestUpdateNginxWeights:
     """Tests for update_nginx_weights."""
 
-    @patch("src.orchestration.tasks.deployment_tasks._run_cmd")
+    @patch("src.core.orchestration.tasks.deployment_tasks._run_cmd")
     def test_generates_weighted_config(
         self, mock_cmd: MagicMock, tmp_path: Path
     ) -> None:
@@ -88,7 +88,7 @@ class TestUpdateNginxWeights:
         # Should have called docker cp and nginx reload
         assert mock_cmd.call_count == 2
 
-    @patch("src.orchestration.tasks.deployment_tasks._run_cmd")
+    @patch("src.core.orchestration.tasks.deployment_tasks._run_cmd")
     def test_generates_default_config_when_canary_zero(
         self, mock_cmd: MagicMock
     ) -> None:
@@ -101,7 +101,7 @@ class TestUpdateNginxWeights:
 class TestStopCanaryContainer:
     """Tests for stop_canary_container."""
 
-    @patch("src.orchestration.tasks.deployment_tasks.subprocess.run")
+    @patch("src.core.orchestration.tasks.deployment_tasks.subprocess.run")
     def test_calls_docker_compose_stop(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=0, stderr="")
         stop_canary_container.fn()

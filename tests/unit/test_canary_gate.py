@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from src.orchestration.tasks.canary_gate import check_canary_gate
+from src.core.orchestration.tasks.canary_gate import check_canary_gate
 
 
 class TestCheckCanaryGate:
     """Tests for check_canary_gate (G4 gate)."""
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_passes_with_good_metrics(
         self, mock_error: object, mock_latency: object
     ) -> None:
@@ -24,8 +24,8 @@ class TestCheckCanaryGate:
         assert result["passed"] is True
         assert "passed" in result["reason"].lower()
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_fails_on_absolute_error_rate(
         self, mock_error: object, mock_latency: object
     ) -> None:
@@ -39,8 +39,8 @@ class TestCheckCanaryGate:
         assert result["passed"] is False
         assert "absolute" in result["reason"].lower()
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_fails_on_high_error_ratio(
         self, mock_error: object, mock_latency: object
     ) -> None:
@@ -54,8 +54,8 @@ class TestCheckCanaryGate:
         assert result["passed"] is False
         assert "error rate ratio" in result["reason"].lower()
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_fails_on_high_latency_ratio(
         self, mock_error: object, mock_latency: object
     ) -> None:
@@ -69,8 +69,8 @@ class TestCheckCanaryGate:
         assert result["passed"] is False
         assert "latency ratio" in result["reason"].lower()
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_passes_when_canary_data_insufficient(
         self, mock_error: object, mock_latency: object
     ) -> None:
@@ -83,8 +83,8 @@ class TestCheckCanaryGate:
         assert result["passed"] is True
         assert "insufficient" in result["reason"].lower()
 
-    @patch("src.orchestration.tasks.canary_gate.query_p99_latency")
-    @patch("src.orchestration.tasks.canary_gate.query_error_rate")
+    @patch("src.core.orchestration.tasks.canary_gate.query_p99_latency")
+    @patch("src.core.orchestration.tasks.canary_gate.query_error_rate")
     def test_passes_when_champion_error_is_zero(
         self, mock_error: object, mock_latency: object
     ) -> None:
