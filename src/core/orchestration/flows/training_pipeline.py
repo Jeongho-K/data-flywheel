@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 
 from prefect import flow
 
-from src.orchestration.tasks.data_tasks import prepare_dataset, validate_images
-from src.orchestration.tasks.training_tasks import train_model
+from src.core.orchestration.tasks.data_tasks import prepare_dataset, validate_images
+from src.core.orchestration.tasks.training_tasks import train_model
 
 if TYPE_CHECKING:
     from prefect import Flow
@@ -154,7 +154,7 @@ def _run_post_hoc_label_validation(
         mlflow_tracking_uri: MLflow tracking server URI.
         registered_model_name: Model name in MLflow registry.
     """
-    from src.orchestration.tasks.data_tasks import validate_labels_task
+    from src.core.orchestration.tasks.data_tasks import validate_labels_task
 
     if not registered_model_name:
         logger.warning("Label validation skipped: no registered_model_name provided.")

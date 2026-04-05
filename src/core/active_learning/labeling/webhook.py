@@ -73,12 +73,12 @@ async def _maybe_trigger_retraining(project_id: int | None) -> None:
         return
 
     try:
-        from src.orchestration.config import ContinuousTrainingConfig
+        from src.core.orchestration.config import ContinuousTrainingConfig
 
         config = ContinuousTrainingConfig()
 
         # Check annotation count
-        from src.active_learning.labeling.bridge import LabelStudioBridge
+        from src.core.active_learning.labeling.bridge import LabelStudioBridge
 
         bridge = LabelStudioBridge(
             base_url=config.label_studio_url,

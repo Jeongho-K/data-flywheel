@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 from prefect import flow
 from prefect.artifacts import create_markdown_artifact
 
-from src.orchestration.tasks.continuous_training_tasks import (
+from src.core.orchestration.tasks.continuous_training_tasks import (
     check_champion_gate,
     check_training_quality,
     integrate_training_data,
     promote_to_champion,
     resolve_round_number,
 )
-from src.orchestration.tasks.data_tasks import validate_images
+from src.core.orchestration.tasks.data_tasks import validate_images
 
 if TYPE_CHECKING:
     from prefect import Flow
@@ -194,7 +194,7 @@ def continuous_training_flow(
     )
 
     # Step 5: Training (call existing training_pipeline as subflow)
-    from src.orchestration.flows.training_pipeline import training_pipeline
+    from src.core.orchestration.flows.training_pipeline import training_pipeline
 
     training_metrics = training_pipeline(
         data_dir=merged_data_dir,
@@ -278,7 +278,7 @@ def _trigger_canary_deployment(trigger_source: str) -> dict:
         Deployment result dict, or error info on failure.
     """
     try:
-        from src.orchestration.flows.deployment_flow import deployment_flow
+        from src.core.orchestration.flows.deployment_flow import deployment_flow
 
         result = deployment_flow(trigger_source=f"ct_{trigger_source}")
         logger.info("Canary deployment completed: %s", result.get("status"))
@@ -306,7 +306,7 @@ def _version_data(
         mlflow_tracking_uri: MLflow tracking URI for cross-referencing.
     """
     try:
-        from src.data.versioning.dvc_manager import DVCManager
+        from src.core.data.versioning.dvc_manager import DVCManager
 
         dvc = DVCManager()
         dvc.version_round(

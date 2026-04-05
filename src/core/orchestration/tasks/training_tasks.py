@@ -38,8 +38,8 @@ def train_model(
     Returns:
         Dictionary of training metrics.
     """
-    from src.training.configs.train_config import TrainConfig
-    from src.training.trainers.classification_trainer import train
+    from src.plugins.cv.configs.train_config import TrainConfig
+    from src.plugins.cv.trainer import train
 
     config = TrainConfig(
         data_dir=data_dir,

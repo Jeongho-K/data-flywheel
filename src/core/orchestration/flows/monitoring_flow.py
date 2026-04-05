@@ -17,8 +17,8 @@ import pandas as pd
 from prefect import flow, task
 from prefect.artifacts import create_markdown_artifact
 
-from src.monitoring.evidently.config import DriftConfig
-from src.monitoring.evidently.drift_detector import (
+from src.core.monitoring.evidently.config import DriftConfig
+from src.core.monitoring.evidently.drift_detector import (
     build_dataframe_from_logs,
     check_drift_threshold,
     detect_drift,
@@ -392,7 +392,7 @@ def monitoring_pipeline(
     # Step 6: G5 Runtime Gate — severity-based auto-response
     g5_result: dict[str, Any] = {}
     if drift_gate_failed:
-        from src.orchestration.tasks.runtime_gate import evaluate_runtime_gate
+        from src.core.orchestration.tasks.runtime_gate import evaluate_runtime_gate
 
         g5_result = evaluate_runtime_gate(
             drift_score=drift_result.get("drift_score", 0.0),
@@ -430,7 +430,7 @@ def _trigger_retraining_on_drift() -> None:
     try:
         from prefect.deployments import run_deployment
 
-        from src.orchestration.config import ContinuousTrainingConfig
+        from src.core.orchestration.config import ContinuousTrainingConfig
 
         config = ContinuousTrainingConfig()
         run_deployment(
@@ -456,7 +456,7 @@ def _trigger_rollback() -> None:
     try:
         import httpx
 
-        from src.orchestration.config_deployment import DeploymentConfig
+        from src.core.orchestration.config_deployment import DeploymentConfig
 
         config = DeploymentConfig()
         response = httpx.post(config.champion_reload_url, timeout=60.0)

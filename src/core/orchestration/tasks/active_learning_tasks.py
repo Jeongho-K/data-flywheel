@@ -127,7 +127,7 @@ def create_labeling_tasks(
     Returns:
         Dict with ``tasks_created`` count and ``project_id``.
     """
-    from src.active_learning.labeling.bridge import LabelStudioBridge
+    from src.core.active_learning.labeling.bridge import LabelStudioBridge
 
     if not samples:
         logger.info("No samples to create labeling tasks for.")

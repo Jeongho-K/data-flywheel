@@ -344,7 +344,7 @@ def integrate_training_data(
     Returns:
         Dict with sample counts by source and class.
     """
-    from src.active_learning.labeling.bridge import LabelStudioBridge
+    from src.core.active_learning.labeling.bridge import LabelStudioBridge
 
     output_path = Path(output_dir)
 

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from prefect import flow
 from prefect.artifacts import create_markdown_artifact
 
-from src.orchestration.tasks.active_learning_tasks import (
+from src.core.orchestration.tasks.active_learning_tasks import (
     create_labeling_tasks,
     fetch_uncertain_predictions,
     select_samples_for_labeling,

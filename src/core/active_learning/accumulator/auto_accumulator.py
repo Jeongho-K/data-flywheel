@@ -13,7 +13,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 if TYPE_CHECKING:
-    from src.active_learning.accumulator.models import AccumulatedSample
+    from src.core.active_learning.accumulator.models import AccumulatedSample
 
 logger = logging.getLogger(__name__)
 

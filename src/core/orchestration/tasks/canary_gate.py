@@ -12,7 +12,7 @@ import logging
 from prefect import task
 from prefect.artifacts import create_markdown_artifact
 
-from src.monitoring.canary_metrics import query_error_rate, query_p99_latency
+from src.core.monitoring.canary_metrics import query_error_rate, query_p99_latency
 
 logger = logging.getLogger(__name__)
 

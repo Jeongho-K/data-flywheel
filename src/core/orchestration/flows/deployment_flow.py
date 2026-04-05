@@ -13,9 +13,9 @@ import time
 from prefect import flow
 from prefect.artifacts import create_markdown_artifact
 
-from src.orchestration.config_deployment import DeploymentConfig
-from src.orchestration.tasks.canary_gate import check_canary_gate
-from src.orchestration.tasks.deployment_tasks import (
+from src.core.orchestration.config_deployment import DeploymentConfig
+from src.core.orchestration.tasks.canary_gate import check_canary_gate
+from src.core.orchestration.tasks.deployment_tasks import (
     reload_champion_model,
     start_canary_container,
     stop_canary_container,

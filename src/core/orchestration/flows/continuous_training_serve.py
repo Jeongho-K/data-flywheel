@@ -14,8 +14,8 @@ import argparse
 import logging
 import os
 
-from src.orchestration.config import ContinuousTrainingConfig
-from src.orchestration.flows.continuous_training_flow import continuous_training_flow
+from src.core.orchestration.config import ContinuousTrainingConfig
+from src.core.orchestration.flows.continuous_training_flow import continuous_training_flow
 
 logging.basicConfig(
     level=logging.INFO,

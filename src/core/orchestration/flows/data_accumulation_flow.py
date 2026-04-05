@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from prefect import flow
 from prefect.artifacts import create_markdown_artifact
 
-from src.orchestration.tasks.active_learning_tasks import (
+from src.core.orchestration.tasks.active_learning_tasks import (
     cleanup_accumulated,
     fetch_accumulated_samples,
     validate_accumulation_quality,
@@ -210,7 +210,7 @@ def _trigger_retraining() -> bool:
     try:
         from prefect.deployments import run_deployment
 
-        from src.orchestration.config import ContinuousTrainingConfig
+        from src.core.orchestration.config import ContinuousTrainingConfig
 
         config = ContinuousTrainingConfig()
         run_deployment(

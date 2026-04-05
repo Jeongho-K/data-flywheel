@@ -20,7 +20,7 @@ import argparse
 import logging
 import os
 
-from src.orchestration.flows.training_pipeline import training_pipeline
+from src.core.orchestration.flows.training_pipeline import training_pipeline
 
 logging.basicConfig(
     level=logging.INFO,

@@ -64,8 +64,8 @@ def validate_images(data_dir: str) -> dict[str, Any]:
         Dict with keys 'total_images', 'issues_found', 'health_score' (0.0-1.0),
         and 'issue_{type}' counts.
     """
-    from src.data.validation import validate_image_dataset
-    from src.data.validation.config import ValidationConfig
+    from src.plugins.cv.validator import validate_image_dataset
+    from src.plugins.cv.configs.validation_config import ValidationConfig
 
     config = ValidationConfig()
     train_dir = Path(data_dir) / "train"
@@ -131,8 +131,8 @@ def validate_labels_task(
     """
     import mlflow.pytorch
 
-    from src.data.preprocessing.transforms import get_eval_transforms
-    from src.data.validation import validate_labels
+    from src.plugins.cv.transforms import get_eval_transforms
+    from src.plugins.cv.label_validator import validate_labels
 
     if mlflow_tracking_uri:
         mlflow.set_tracking_uri(mlflow_tracking_uri)
@@ -213,7 +213,7 @@ def ensure_data_available(data_dir: str, verify: bool = True) -> Path:
         FileNotFoundError: If dataset directory and .dvc file are both missing.
         RuntimeError: If checksum verification fails after pull.
     """
-    from src.data.versioning import DVCManager
+    from src.core.data.versioning import DVCManager
 
     path = Path(data_dir)
     if path.exists():
