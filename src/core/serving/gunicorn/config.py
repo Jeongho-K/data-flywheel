@@ -1,7 +1,7 @@
 """Gunicorn configuration for the inference API.
 
 This file is loaded by Gunicorn via the -c flag:
-    gunicorn -c src/serving/gunicorn/config.py src.serving.api.app:create_app()
+    gunicorn -c src/core/serving/gunicorn/config.py src.core.serving.api.app:create_app()
 
 All variables at module level are Gunicorn settings.
 See: https://docs.gunicorn.org/en/stable/settings.html

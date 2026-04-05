@@ -2,13 +2,13 @@
 
 Usage:
     # Run once (no schedule):
-    uv run python -m src.orchestration.serve --run-once
+    uv run python -m src.core.orchestration.serve --run-once
 
     # Serve with weekly schedule:
-    uv run python -m src.orchestration.serve
+    uv run python -m src.core.orchestration.serve
 
     # Serve with daily schedule:
-    uv run python -m src.orchestration.serve --cron "0 2 * * *"
+    uv run python -m src.core.orchestration.serve --cron "0 2 * * *"
 
 Note: Not all pipeline parameters are exposed via CLI. Use environment
 variables (TRAIN_ prefix) to configure additional training settings.

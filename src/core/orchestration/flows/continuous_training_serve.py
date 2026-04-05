@@ -2,10 +2,10 @@
 
 Usage:
     # Serve (event-driven, no schedule — triggered by run_deployment):
-    uv run python -m src.orchestration.flows.continuous_training_serve
+    uv run python -m src.core.orchestration.flows.continuous_training_serve
 
     # Run once for testing:
-    uv run python -m src.orchestration.flows.continuous_training_serve --run-once
+    uv run python -m src.core.orchestration.flows.continuous_training_serve --run-once
 """
 
 from __future__ import annotations

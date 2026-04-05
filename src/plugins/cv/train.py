@@ -1,8 +1,8 @@
 """CLI entrypoint for training.
 
 Usage:
-    uv run python -m src.training.train
-    uv run python -m src.training.train --model-name resnet50 --epochs 20
+    uv run python -m src.plugins.cv.train
+    uv run python -m src.plugins.cv.train --model-name resnet50 --epochs 20
 """
 
 from __future__ import annotations

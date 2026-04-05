@@ -20,7 +20,7 @@ class SoftmaxEntropyEstimator:
     over the input probability vectors using only the math stdlib module.
 
     Satisfies the ``UncertaintyEstimator`` protocol defined in
-    ``src/active_learning/protocols.py``.
+    ``src/core/protocols.py``.
     """
 
     def estimate(self, predictions: list[list[float]]) -> list[float]:
