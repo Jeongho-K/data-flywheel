@@ -246,10 +246,7 @@ def validate_accumulation_quality(
     dominant_class = max(class_counts, key=class_counts.get)  # type: ignore[arg-type]
 
     if max_class_ratio > 0.8:
-        reason = (
-            f"Class imbalance: class '{dominant_class}' has {max_class_ratio:.1%} "
-            f"of samples (threshold: 80%)"
-        )
+        reason = f"Class imbalance: class '{dominant_class}' has {max_class_ratio:.1%} of samples (threshold: 80%)"
         logger.warning("Quality gate FAILED: %s", reason)
         return {
             "passed": False,

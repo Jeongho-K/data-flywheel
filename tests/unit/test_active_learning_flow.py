@@ -179,9 +179,7 @@ class TestFetchAccumulatedSamples:
 
         mock_client = MagicMock()
         mock_paginator = MagicMock()
-        mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "accumulated/batch1.jsonl"}]}
-        ]
+        mock_paginator.paginate.return_value = [{"Contents": [{"Key": "accumulated/batch1.jsonl"}]}]
         mock_client.get_paginator.return_value = mock_paginator
         mock_client.get_object.return_value = {"Body": BytesIO(_jsonl_bytes(*records))}
 
@@ -383,7 +381,6 @@ class TestActiveLearningFlow:
 # ---------------------------------------------------------------------------
 # Data Accumulation Flow tests
 # ---------------------------------------------------------------------------
-
 
 
 # Data accumulation flow tests live in tests/unit/test_data_accumulation_flow.py

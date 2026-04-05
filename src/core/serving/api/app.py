@@ -12,12 +12,11 @@ from fastapi import FastAPI
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+from src.common.device import resolve_device
 from src.core.active_learning.accumulator.auto_accumulator import AutoAccumulator
 from src.core.active_learning.config import ActiveLearningConfig
 from src.core.active_learning.labeling.webhook import webhook_router
 from src.core.active_learning.routing.confidence_router import ConfidenceRouter
-from src.plugins.cv.uncertainty import SoftmaxEntropyEstimator
-from src.common.device import resolve_device
 from src.core.monitoring.metrics import setup_metrics
 from src.core.monitoring.prediction_logger import PredictionLogger
 from src.core.serving.api.admin import admin_router
@@ -28,6 +27,7 @@ from src.core.serving.api.dependencies import (
 )
 from src.core.serving.api.routes import router
 from src.core.serving.reload_sync import ReloadSubscriber
+from src.plugins.cv.uncertainty import SoftmaxEntropyEstimator
 
 logger = logging.getLogger(__name__)
 

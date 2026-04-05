@@ -62,10 +62,7 @@ def check_canary_gate(
 
     # Check absolute error rate ceiling
     if canary_error > absolute_max_error_rate:
-        reason = (
-            f"Canary error rate {canary_error:.4f} exceeds "
-            f"absolute max {absolute_max_error_rate:.4f}"
-        )
+        reason = f"Canary error rate {canary_error:.4f} exceeds absolute max {absolute_max_error_rate:.4f}"
         logger.warning("G4 FAIL: %s", reason)
         _create_gate_artifact(passed=False, reason=reason, metrics=metrics)
         return {"passed": False, "reason": reason, "metrics": metrics}
@@ -74,10 +71,7 @@ def check_canary_gate(
     if champion_error is not None and champion_error > 0:
         error_ratio = canary_error / champion_error
         if error_ratio > max_error_rate_ratio:
-            reason = (
-                f"Canary/champion error rate ratio {error_ratio:.2f} "
-                f"exceeds max {max_error_rate_ratio:.2f}"
-            )
+            reason = f"Canary/champion error rate ratio {error_ratio:.2f} exceeds max {max_error_rate_ratio:.2f}"
             logger.warning("G4 FAIL: %s", reason)
             _create_gate_artifact(passed=False, reason=reason, metrics=metrics)
             return {"passed": False, "reason": reason, "metrics": metrics}
@@ -86,10 +80,7 @@ def check_canary_gate(
     if champion_latency is not None and champion_latency > 0:
         latency_ratio = canary_latency / champion_latency
         if latency_ratio > max_latency_ratio:
-            reason = (
-                f"Canary/champion P99 latency ratio {latency_ratio:.2f} "
-                f"exceeds max {max_latency_ratio:.2f}"
-            )
+            reason = f"Canary/champion P99 latency ratio {latency_ratio:.2f} exceeds max {max_latency_ratio:.2f}"
             logger.warning("G4 FAIL: %s", reason)
             _create_gate_artifact(passed=False, reason=reason, metrics=metrics)
             return {"passed": False, "reason": reason, "metrics": metrics}
@@ -111,14 +102,8 @@ def _create_gate_artifact(
     md += f"**Reason:** {reason}\n\n"
     md += "| Metric | Champion | Canary |\n"
     md += "|--------|----------|--------|\n"
-    md += (
-        f"| Error Rate | {_fmt(metrics.get('champion_error_rate'))} "
-        f"| {_fmt(metrics.get('canary_error_rate'))} |\n"
-    )
-    md += (
-        f"| P99 Latency | {_fmt(metrics.get('champion_p99_latency'))} "
-        f"| {_fmt(metrics.get('canary_p99_latency'))} |\n"
-    )
+    md += f"| Error Rate | {_fmt(metrics.get('champion_error_rate'))} | {_fmt(metrics.get('canary_error_rate'))} |\n"
+    md += f"| P99 Latency | {_fmt(metrics.get('champion_p99_latency'))} | {_fmt(metrics.get('canary_p99_latency'))} |\n"
     create_markdown_artifact(key="g4-canary-gate", markdown=md)
 
 

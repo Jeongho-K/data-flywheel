@@ -16,9 +16,7 @@ class TestRunCanaryMonitoring:
 
     @patch("src.core.orchestration.flows.deployment_flow.time.sleep")
     @patch("src.core.orchestration.flows.deployment_flow.check_canary_gate")
-    def test_returns_true_when_all_checks_pass(
-        self, mock_gate: MagicMock, _mock_sleep: MagicMock
-    ) -> None:
+    def test_returns_true_when_all_checks_pass(self, mock_gate: MagicMock, _mock_sleep: MagicMock) -> None:
         mock_gate.return_value = {"passed": True, "reason": "ok", "metrics": {}}
 
         from src.core.orchestration.config_deployment import DeploymentConfig
@@ -38,9 +36,7 @@ class TestRunCanaryMonitoring:
 
     @patch("src.core.orchestration.flows.deployment_flow.time.sleep")
     @patch("src.core.orchestration.flows.deployment_flow.check_canary_gate")
-    def test_returns_false_on_first_failure(
-        self, mock_gate: MagicMock, _mock_sleep: MagicMock
-    ) -> None:
+    def test_returns_false_on_first_failure(self, mock_gate: MagicMock, _mock_sleep: MagicMock) -> None:
         mock_gate.return_value = {"passed": False, "reason": "error rate high", "metrics": {}}
 
         from src.core.orchestration.config_deployment import DeploymentConfig
@@ -64,9 +60,7 @@ class TestRollback:
 
     @patch("src.core.orchestration.flows.deployment_flow.stop_canary_container")
     @patch("src.core.orchestration.flows.deployment_flow.update_nginx_weights")
-    def test_rollback_restores_champion_only(
-        self, mock_nginx: MagicMock, mock_stop: MagicMock
-    ) -> None:
+    def test_rollback_restores_champion_only(self, mock_nginx: MagicMock, mock_stop: MagicMock) -> None:
         from src.core.orchestration.config_deployment import DeploymentConfig
 
         config = DeploymentConfig()

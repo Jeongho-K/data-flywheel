@@ -53,9 +53,7 @@ def check_training_quality(
         "threshold": min_val_accuracy,
     }
     if not acc_passed:
-        failed_reasons.append(
-            f"best_val_accuracy ({best_val_acc:.4f}) < min ({min_val_accuracy:.4f})"
-        )
+        failed_reasons.append(f"best_val_accuracy ({best_val_acc:.4f}) < min ({min_val_accuracy:.4f})")
 
     # Check 2: Overfitting gap
     train_loss = metrics.get("train_loss")
@@ -71,9 +69,7 @@ def check_training_quality(
             "val_loss": val_loss,
         }
         if not gap_passed:
-            failed_reasons.append(
-                f"overfit gap ({overfit_gap:.4f}) > max ({max_overfit_gap:.4f})"
-            )
+            failed_reasons.append(f"overfit gap ({overfit_gap:.4f}) > max ({max_overfit_gap:.4f})")
     else:
         checks["overfit_gap"] = {"passed": True, "value": None, "reason": "train_loss not available, skipped"}
 
@@ -165,8 +161,7 @@ def check_champion_gate(
     passed = challenger_value > champion_value + champion_margin
     if passed:
         reason = (
-            f"Challenger ({challenger_value:.4f}) > champion ({champion_value:.4f}) "
-            f"+ margin ({champion_margin:.4f})"
+            f"Challenger ({challenger_value:.4f}) > champion ({champion_value:.4f}) + margin ({champion_margin:.4f})"
         )
     else:
         reason = (

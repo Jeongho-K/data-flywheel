@@ -64,8 +64,8 @@ def validate_images(data_dir: str) -> dict[str, Any]:
         Dict with keys 'total_images', 'issues_found', 'health_score' (0.0-1.0),
         and 'issue_{type}' counts.
     """
-    from src.plugins.cv.validator import validate_image_dataset
     from src.plugins.cv.configs.validation_config import ValidationConfig
+    from src.plugins.cv.validator import validate_image_dataset
 
     config = ValidationConfig()
     train_dir = Path(data_dir) / "train"
@@ -131,8 +131,8 @@ def validate_labels_task(
     """
     import mlflow.pytorch
 
-    from src.plugins.cv.transforms import get_eval_transforms
     from src.plugins.cv.label_validator import validate_labels
+    from src.plugins.cv.transforms import get_eval_transforms
 
     if mlflow_tracking_uri:
         mlflow.set_tracking_uri(mlflow_tracking_uri)

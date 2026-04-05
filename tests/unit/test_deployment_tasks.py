@@ -19,9 +19,7 @@ class TestStartCanaryContainer:
     """Tests for start_canary_container."""
 
     @patch("src.core.orchestration.tasks.deployment_tasks.subprocess.run")
-    def test_calls_docker_compose_with_canary_profile(
-        self, mock_run: MagicMock
-    ) -> None:
+    def test_calls_docker_compose_with_canary_profile(self, mock_run: MagicMock) -> None:
         mock_run.return_value = MagicMock(returncode=0, stderr="")
         start_canary_container.fn(project_name="test-project")
 
@@ -54,9 +52,7 @@ class TestWaitForCanaryHealth:
     @patch("src.core.orchestration.tasks.deployment_tasks.time.sleep")
     @patch("src.core.orchestration.tasks.deployment_tasks.time.monotonic")
     @patch("src.core.orchestration.tasks.deployment_tasks.httpx.get")
-    def test_raises_on_timeout(
-        self, mock_get: MagicMock, mock_time: MagicMock, _mock_sleep: MagicMock
-    ) -> None:
+    def test_raises_on_timeout(self, mock_get: MagicMock, mock_time: MagicMock, _mock_sleep: MagicMock) -> None:
         import httpx
 
         mock_get.side_effect = httpx.ConnectError("refused")
@@ -71,27 +67,21 @@ class TestUpdateNginxWeights:
     """Tests for update_nginx_weights."""
 
     @patch("src.core.orchestration.tasks.deployment_tasks._run_cmd")
-    def test_generates_weighted_config(
-        self, mock_cmd: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_generates_weighted_config(self, mock_cmd: MagicMock, tmp_path: Path) -> None:
         template_content = (
             "upstream api_backend {{\n"
             "    server api:8000 weight={champion_weight};\n"
             "    server api-canary:8000 weight={canary_weight};\n"
             "}}\n"
         )
-        with patch.object(
-            Path, "read_text", return_value=template_content
-        ):
+        with patch.object(Path, "read_text", return_value=template_content):
             update_nginx_weights.fn(champion_weight=9, canary_weight=1)
 
         # Should have called docker cp and nginx reload
         assert mock_cmd.call_count == 2
 
     @patch("src.core.orchestration.tasks.deployment_tasks._run_cmd")
-    def test_generates_default_config_when_canary_zero(
-        self, mock_cmd: MagicMock
-    ) -> None:
+    def test_generates_default_config_when_canary_zero(self, mock_cmd: MagicMock) -> None:
         update_nginx_weights.fn(champion_weight=10, canary_weight=0)
 
         # Verify the written config is default (no canary)

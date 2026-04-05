@@ -83,9 +83,7 @@ def wait_for_canary_health(
             pass
         time.sleep(poll_interval)
 
-    raise TimeoutError(
-        f"Canary did not become healthy within {timeout_seconds}s"
-    )
+    raise TimeoutError(f"Canary did not become healthy within {timeout_seconds}s")
 
 
 @task(name="update-nginx-weights")
@@ -120,9 +118,7 @@ def update_nginx_weights(
     )
 
     # Write config to a temp file and copy into container
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".conf", delete=False
-    ) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as tmp:
         tmp.write(config)
         tmp_path = tmp.name
 

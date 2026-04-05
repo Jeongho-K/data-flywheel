@@ -83,8 +83,8 @@ def _create_gate_artifact(result: dict) -> None:
 
 | Metric | Value |
 |--------|-------|
-| Drift Score | {result['drift_score']:.4f} |
-| Drift Detected | {result['drift_detected']} |
+| Drift Score | {result["drift_score"]:.4f} |
+| Drift Detected | {result["drift_detected"]} |
 | Severity | {severity} |
 | Action | {action_desc} |
 """

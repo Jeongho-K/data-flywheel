@@ -11,7 +11,6 @@ from fastapi import APIRouter, HTTPException, Request, UploadFile
 from PIL import Image
 
 from src.core.active_learning.accumulator.models import AccumulatedSample
-from src.plugins.cv.transforms import get_eval_transforms
 from src.core.monitoring.metrics import record_prediction, record_routing
 from src.core.serving.api.dependencies import ModelState, load_model_from_registry
 from src.core.serving.api.schemas import (
@@ -21,6 +20,7 @@ from src.core.serving.api.schemas import (
     ModelReloadResponse,
     PredictionResponse,
 )
+from src.plugins.cv.transforms import get_eval_transforms
 
 logger = logging.getLogger(__name__)
 
@@ -106,21 +106,21 @@ async def predict(request: Request, file: UploadFile) -> PredictionResponse:
         if decision.route == "auto_accumulate":
             accumulator = getattr(request.app.state, "auto_accumulator", None)
             if accumulator is not None:
-                accumulator.add(AccumulatedSample(
-                    timestamp=datetime.now(tz=UTC).isoformat(),
-                    predicted_class=predicted_idx,
-                    class_name=class_name,
-                    confidence=confidence,
-                    probabilities=probs,
-                    model_version=ms.model_version,
-                ))
+                accumulator.add(
+                    AccumulatedSample(
+                        timestamp=datetime.now(tz=UTC).isoformat(),
+                        predicted_class=predicted_idx,
+                        class_name=class_name,
+                        confidence=confidence,
+                        probabilities=probs,
+                        model_version=ms.model_version,
+                    )
+                )
 
         record_routing(
             routing_decision=decision.route,
             uncertainty_score=uncertainty_score,
-            accumulation_buffer_size=getattr(
-                getattr(request.app.state, "auto_accumulator", None), "buffer_size", None
-            ),
+            accumulation_buffer_size=getattr(getattr(request.app.state, "auto_accumulator", None), "buffer_size", None),
         )
 
     # Record metrics and log prediction
@@ -185,9 +185,7 @@ async def model_reload(request: Request, body: ModelReloadRequest) -> ModelReloa
     # Notify other Gunicorn workers via Redis Pub/Sub
     reload_subscriber = getattr(request.app.state, "reload_subscriber", None)
     if reload_subscriber is not None and reload_subscriber.is_active:
-        reload_subscriber.publish_reload(
-            {"model_name": target_name, "model_version": target_version}
-        )
+        reload_subscriber.publish_reload({"model_name": target_name, "model_version": target_version})
 
     return ModelReloadResponse(
         status="ok",

@@ -41,10 +41,7 @@ def build_dataframe_from_logs(raw_jsonl: str) -> pd.DataFrame:
 
     malformed_count = total_lines - len(records)
     if total_lines > 0 and malformed_count / total_lines > 0.1:
-        raise ValueError(
-            f"Too many malformed JSON lines: {malformed_count}/{total_lines}. "
-            "Check log format."
-        )
+        raise ValueError(f"Too many malformed JSON lines: {malformed_count}/{total_lines}. Check log format.")
 
     if not records:
         return pd.DataFrame()

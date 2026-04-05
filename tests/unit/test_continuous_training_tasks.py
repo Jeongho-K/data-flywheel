@@ -274,9 +274,7 @@ class TestResolveRoundNumber:
 
     def test_increments_from_existing_state(self) -> None:
         mock_client = MagicMock()
-        mock_client.get_object.return_value = {
-            "Body": BytesIO(json.dumps({"round": 3}).encode())
-        }
+        mock_client.get_object.return_value = {"Body": BytesIO(json.dumps({"round": 3}).encode())}
 
         with patch(
             "src.core.orchestration.tasks.continuous_training_tasks.boto3.client",
@@ -355,9 +353,7 @@ class TestIntegrateTrainingData:
 
         mock_s3 = MagicMock()
         mock_paginator = MagicMock()
-        mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "accumulated/batch.jsonl"}]}
-        ]
+        mock_paginator.paginate.return_value = [{"Contents": [{"Key": "accumulated/batch.jsonl"}]}]
         mock_s3.get_paginator.return_value = mock_paginator
 
         # Return different content based on key

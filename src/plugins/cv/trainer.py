@@ -16,9 +16,9 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
 from src.common.device import resolve_device
-from src.plugins.cv.transforms import get_eval_transforms, get_train_transforms
 from src.plugins.cv.configs.train_config import TrainConfig  # noqa: TCH001 - used at runtime
 from src.plugins.cv.models.classifier import create_classifier
+from src.plugins.cv.transforms import get_eval_transforms, get_train_transforms
 
 logger = logging.getLogger(__name__)
 

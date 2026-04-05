@@ -97,8 +97,6 @@ def query_p99_latency(
         P99 latency in seconds, or None if insufficient data.
     """
     query = (
-        "histogram_quantile(0.99, "
-        f'sum(rate(http_request_duration_seconds_bucket{{job="{job}"}}[{window}])) by (le)'
-        ")"
+        f'histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{{job="{job}"}}[{window}])) by (le))'
     )
     return _query_prometheus(prometheus_url, query)

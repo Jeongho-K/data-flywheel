@@ -52,10 +52,7 @@ def on_ct_completion(flow: Flow, flow_run: FlowRun, state: State) -> None:
     name="continuous-training",
     log_prints=True,
     retries=0,
-    description=(
-        "Phase B continuous training loop: "
-        "data integration → G1 → train → G2 → G3 → champion promotion"
-    ),
+    description=("Phase B continuous training loop: data integration → G1 → train → G2 → G3 → champion promotion"),
     on_failure=[on_ct_failure],
     on_completion=[on_ct_completion],
 )
@@ -217,9 +214,7 @@ def continuous_training_flow(
     )
 
     if not g2_result["passed"]:
-        raise RuntimeError(
-            f"G2 Training Quality Gate failed: {g2_result['reason']}. Round {current_round}."
-        )
+        raise RuntimeError(f"G2 Training Quality Gate failed: {g2_result['reason']}. Round {current_round}.")
     logger.info("G2 Training Quality Gate passed")
 
     # Step 7: G3 — Champion gate
@@ -232,9 +227,7 @@ def continuous_training_flow(
     )
 
     if not g3_result["passed"]:
-        raise RuntimeError(
-            f"G3 Champion Gate failed: {g3_result['reason']}. Round {current_round}."
-        )
+        raise RuntimeError(f"G3 Champion Gate failed: {g3_result['reason']}. Round {current_round}.")
     logger.info("G3 Champion Gate passed")
 
     # Step 8: Promote challenger to champion

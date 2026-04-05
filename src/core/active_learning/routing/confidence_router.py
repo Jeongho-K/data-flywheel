@@ -70,9 +70,7 @@ class ConfidenceRouter:
         logger.debug("Routed prediction (conf=%.4f, unc=%.4f) -> %s", confidence, uncertainty, route)
         return RoutingDecision(route=route, confidence=confidence, uncertainty=uncertainty)
 
-    def route_batch(
-        self, confidences: list[float], uncertainties: list[float]
-    ) -> list[RoutingDecision]:
+    def route_batch(self, confidences: list[float], uncertainties: list[float]) -> list[RoutingDecision]:
         """Route a batch of predictions.
 
         Args:
