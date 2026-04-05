@@ -1,38 +1,16 @@
-"""Image dataset validation using CleanVision.
-
-Detects common image quality issues: blurry, dark/bright, duplicates,
-odd sizes, and other artifacts before training.
-"""
+"""Image dataset validation using CleanVision."""
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from cleanvision import Imagelab
 
+from src.core.protocols import ValidationReport
+
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ValidationReport:
-    """Summary of image dataset validation results."""
-
-    total_images: int = 0
-    issues_found: int = 0
-    issue_types: dict[str, int] = field(default_factory=dict)
-    health_score: float = 1.0
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert report to dictionary for MLflow logging."""
-        return {
-            "total_images": self.total_images,
-            "issues_found": self.issues_found,
-            "health_score": self.health_score,
-            **{f"issue_{k}": v for k, v in self.issue_types.items()},
-        }
 
 
 def validate_image_dataset(
