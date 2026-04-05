@@ -12,22 +12,22 @@ from fastapi import FastAPI
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-from src.active_learning.accumulator.auto_accumulator import AutoAccumulator
-from src.active_learning.config import ActiveLearningConfig
-from src.active_learning.labeling.webhook import webhook_router
-from src.active_learning.routing.confidence_router import ConfidenceRouter
-from src.active_learning.uncertainty.softmax_entropy import SoftmaxEntropyEstimator
+from src.core.active_learning.accumulator.auto_accumulator import AutoAccumulator
+from src.core.active_learning.config import ActiveLearningConfig
+from src.core.active_learning.labeling.webhook import webhook_router
+from src.core.active_learning.routing.confidence_router import ConfidenceRouter
+from src.plugins.cv.uncertainty import SoftmaxEntropyEstimator
 from src.common.device import resolve_device
-from src.monitoring.metrics import setup_metrics
-from src.monitoring.prediction_logger import PredictionLogger
-from src.serving.api.admin import admin_router
-from src.serving.api.config import ServingConfig
-from src.serving.api.dependencies import (
+from src.core.monitoring.metrics import setup_metrics
+from src.core.monitoring.prediction_logger import PredictionLogger
+from src.core.serving.api.admin import admin_router
+from src.core.serving.api.config import ServingConfig
+from src.core.serving.api.dependencies import (
     ModelState,
     load_model_from_registry,
 )
-from src.serving.api.routes import router
-from src.serving.reload_sync import ReloadSubscriber
+from src.core.serving.api.routes import router
+from src.core.serving.reload_sync import ReloadSubscriber
 
 logger = logging.getLogger(__name__)
 

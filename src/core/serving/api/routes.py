@@ -10,11 +10,11 @@ import torch
 from fastapi import APIRouter, HTTPException, Request, UploadFile
 from PIL import Image
 
-from src.active_learning.accumulator.models import AccumulatedSample
-from src.data.preprocessing.transforms import get_eval_transforms
-from src.monitoring.metrics import record_prediction, record_routing
-from src.serving.api.dependencies import ModelState, load_model_from_registry
-from src.serving.api.schemas import (
+from src.core.active_learning.accumulator.models import AccumulatedSample
+from src.plugins.cv.transforms import get_eval_transforms
+from src.core.monitoring.metrics import record_prediction, record_routing
+from src.core.serving.api.dependencies import ModelState, load_model_from_registry
+from src.core.serving.api.schemas import (
     HealthResponse,
     ModelInfoResponse,
     ModelReloadRequest,

@@ -33,7 +33,7 @@ async def trigger_retraining(
     try:
         from prefect.deployments import run_deployment
 
-        from src.orchestration.config import ContinuousTrainingConfig
+        from src.core.orchestration.config import ContinuousTrainingConfig
 
         config = ContinuousTrainingConfig()
 
