@@ -6,6 +6,6 @@ Re-exports ActiveLearningConfig which already contains Label Studio settings
 
 from __future__ import annotations
 
-from src.active_learning.config import ActiveLearningConfig
+from src.core.active_learning.config import ActiveLearningConfig
 
 __all__ = ["ActiveLearningConfig"]
