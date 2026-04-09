@@ -144,3 +144,47 @@ def minio_s3_client():
         aws_secret_access_key=secret_key,
         region_name="us-east-1",
     )
+
+
+# ---------------------------------------------------------------------------
+# Test image fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def test_image_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate a minimal PNG test image and return its path."""
+    from tests.e2e.helpers.e2e_utils import save_test_image
+
+    path = tmp_path_factory.mktemp("images") / "test_224x224.png"
+    return save_test_image(path)
+
+
+@pytest.fixture(scope="session")
+def test_image_bytes() -> bytes:
+    """Generate minimal PNG test image bytes."""
+    from tests.e2e.helpers.e2e_utils import generate_test_image
+
+    return generate_test_image()
+
+
+# ---------------------------------------------------------------------------
+# Admin API fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def admin_api_key() -> str:
+    """Return the admin API key from environment."""
+    return os.environ.get("ADMIN_API_KEY", "")
+
+
+# ---------------------------------------------------------------------------
+# Label Studio fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def label_studio_api_key() -> str:
+    """Return the Label Studio API key from environment."""
+    return os.environ.get("AL_LABEL_STUDIO_API_KEY", "")

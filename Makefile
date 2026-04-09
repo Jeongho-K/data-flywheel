@@ -1,4 +1,4 @@
-.PHONY: up down down-v ps logs seed lint format test verify install train pipeline pipeline-serve drift-check canary-up canary-down canary-status
+.PHONY: up down down-v ps logs seed lint format test verify install train pipeline pipeline-serve drift-check canary-up canary-down canary-status test-e2e-full
 
 # ---------------------------------------------------------------------------
 # Docker Compose
@@ -83,6 +83,9 @@ test-e2e-ui:
 
 test-e2e-ui-headed:
 	uv run pytest tests/e2e/browser/ -v --browser-channel chrome --headed
+
+test-e2e-full:
+	uv run pytest tests/e2e/ -v --ignore=tests/e2e/browser/ -x --tb=short
 
 # ---------------------------------------------------------------------------
 # Canary Deployment (Phase C)
