@@ -9,9 +9,23 @@ from __future__ import annotations
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import boto3
 import pytest
+
+# Load .env file so port overrides are available to tests
+_env_file = Path(__file__).resolve().parents[2] / ".env"
+if _env_file.exists():
+    for line in _env_file.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            # Don't override existing env vars
+            if key not in os.environ:
+                os.environ[key] = value
 
 
 def _service_is_reachable(url: str, timeout: float = 3.0) -> bool:
@@ -88,6 +102,20 @@ def grafana_base_url() -> str:
 
 
 @pytest.fixture(scope="session")
+def label_studio_base_url() -> str:
+    """Return the base URL for Label Studio."""
+    port = os.environ.get("LABEL_STUDIO_PORT", "8081")
+    return f"http://localhost:{port}"
+
+
+@pytest.fixture(scope="session")
+def minio_console_url() -> str:
+    """Return the base URL for the MinIO Console."""
+    port = os.environ.get("MINIO_CONSOLE_PORT", "9001")
+    return f"http://localhost:{port}"
+
+
+@pytest.fixture(scope="session")
 def pushgateway_base_url() -> str:
     """Return the base URL for the Pushgateway."""
     port = os.environ.get("PUSHGATEWAY_PORT", "9091")
@@ -116,3 +144,47 @@ def minio_s3_client():
         aws_secret_access_key=secret_key,
         region_name="us-east-1",
     )
+
+
+# ---------------------------------------------------------------------------
+# Test image fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def test_image_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate a minimal PNG test image and return its path."""
+    from tests.e2e.helpers.e2e_utils import save_test_image
+
+    path = tmp_path_factory.mktemp("images") / "test_224x224.png"
+    return save_test_image(path)
+
+
+@pytest.fixture(scope="session")
+def test_image_bytes() -> bytes:
+    """Generate minimal PNG test image bytes."""
+    from tests.e2e.helpers.e2e_utils import generate_test_image
+
+    return generate_test_image()
+
+
+# ---------------------------------------------------------------------------
+# Admin API fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def admin_api_key() -> str:
+    """Return the admin API key from environment."""
+    return os.environ.get("ADMIN_API_KEY", "")
+
+
+# ---------------------------------------------------------------------------
+# Label Studio fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def label_studio_api_key() -> str:
+    """Return the Label Studio API key from environment."""
+    return os.environ.get("AL_LABEL_STUDIO_API_KEY", "")

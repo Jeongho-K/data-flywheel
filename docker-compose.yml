@@ -12,7 +12,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/create-multiple-databases.sh:/docker-entrypoint-initdb.d/create-multiple-databases.sh:ro
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlops}"]
       interval: 10s
@@ -20,6 +22,31 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL one-shot init — idempotently ensures every database in
+  # POSTGRES_MULTIPLE_DATABASES exists, even on pre-existing volumes where
+  # /docker-entrypoint-initdb.d/ scripts have already been skipped.
+  # Dependent services (mlflow, prefect-server, label-studio) wait for
+  # this service to complete successfully before starting.
+  # ---------------------------------------------------------------------------
+  postgres-init:
+    image: postgres:16.6-alpine
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-mlops}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-mlops_secret}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-mlflow,prefect,labelstudio}
+    volumes:
+      - ./scripts/ensure_databases.sh:/ensure_databases.sh:ro
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/ensure_databases.sh"]
+    restart: "no"
 
   # ---------------------------------------------------------------------------
   # MinIO - S3-compatible object storage
@@ -35,8 +62,10 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    networks:
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -63,12 +92,16 @@ services:
       # Allow Docker internal hostnames for API access (DNS rebinding protection)
       MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow,mlflow:5000,localhost,localhost:*,127.0.0.1,127.0.0.1:*"
     ports:
-      - "${MLFLOW_PORT:-5000}:5000"
+      - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
+    networks:
+      - backend
     # NOTE: /health only checks if the web server is running, not PostgreSQL/MinIO connectivity.
     # Use `make verify` for deeper infrastructure validation.
     healthcheck:
@@ -90,10 +123,14 @@ services:
       PREFECT_SERVER_API_HOST: 0.0.0.0
       PREFECT_SERVER_API_PORT: "4200"
     ports:
-      - "${PREFECT_PORT:-4200}:4200"
+      - "127.0.0.1:${PREFECT_PORT:-4200}:4200"
+    networks:
+      - backend
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')\""]
       interval: 15s
@@ -102,16 +139,73 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------------
+  # MLflow one-shot seed — idempotently ensures a baseline ``cv-classifier``
+  # model exists in the Model Registry so the serving API can load a model
+  # on a fresh environment. The underlying script is a no-op when any
+  # version is already registered, so running on every ``up`` is safe.
+  # ---------------------------------------------------------------------------
+  mlflow-init:
+    build:
+      context: .
+      dockerfile: docker/mlflow-init/Dockerfile
+    image: data-flywheel/mlflow-init:0.1.0
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      SEED_MODEL_NAME: ${SERVING_MODEL_NAME:-cv-classifier}
+      SEED_NUM_CLASSES: "10"
+      SEED_ARCH: mobilenet_v3_small
+    networks:
+      - backend
+    depends_on:
+      mlflow:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Prefect worker — registers the continuous-training deployment on the
+  # Prefect server and then listens for triggers. ``.serve()`` performs
+  # an upsert, so restarting the container is idempotent.
+  # ---------------------------------------------------------------------------
+  prefect-worker:
+    build:
+      context: .
+      dockerfile: docker/orchestration/Dockerfile
+    image: data-flywheel/prefect-worker:0.1.0
+    environment:
+      PREFECT_API_URL: http://prefect-server:4200/api
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      TRAINING_REGISTERED_MODEL_NAME: ${SERVING_MODEL_NAME:-cv-classifier}
+    networks:
+      - backend
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+      mlflow-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
   # Redis - In-memory data store (used by Prefect workers in Phase 4)
   # ---------------------------------------------------------------------------
   redis:
     image: redis:7.4-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secret}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -136,12 +230,20 @@ services:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      PREFECT_API_URL: http://prefect-server:4200/api
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom_multiproc
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    networks:
+      - frontend
+      - backend
     depends_on:
       mlflow:
         condition: service_healthy
+      mlflow-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -171,10 +273,18 @@ services:
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       GUNICORN_WORKERS: ${GUNICORN_CANARY_WORKERS:-1}
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379/0
+      PREFECT_API_URL: http://prefect-server:4200/api
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom_multiproc
+    networks:
+      - frontend
+      - backend
     depends_on:
       mlflow:
         condition: service_healthy
+      mlflow-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -194,6 +304,8 @@ services:
     image: data-flywheel/nginx:1.28.1-alpine
     ports:
       - "${NGINX_PORT:-80}:80"
+    networks:
+      - frontend
     depends_on:
       api:
         condition: service_healthy
@@ -214,12 +326,15 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=30d'
       - '--storage.tsdb.retention.size=5GB'
-      - '--web.enable-lifecycle'
+      # --web.enable-lifecycle removed: exposes unauthenticated reload/quit API
     volumes:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - monitoring
+      - frontend
     depends_on:
       api:
         condition: service_healthy
@@ -236,7 +351,9 @@ services:
   pushgateway:
     image: prom/pushgateway:v1.11.0
     ports:
-      - "${PUSHGATEWAY_PORT:-9091}:9091"
+      - "127.0.0.1:${PUSHGATEWAY_PORT:-9091}:9091"
+    networks:
+      - monitoring
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9091/-/healthy"]
       interval: 15s
@@ -260,7 +377,9 @@ services:
       - ./configs/grafana/alerting:/etc/grafana/provisioning/alerting:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    networks:
+      - monitoring
     depends_on:
       prometheus:
         condition: service_healthy
@@ -283,15 +402,21 @@ services:
       POSTGRE_PASSWORD: ${POSTGRES_PASSWORD:-mlops_secret}
       POSTGRE_HOST: postgres
       POSTGRE_PORT: "5432"
-      LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED: "true"
-      LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT: /label-studio/data
+      # Local file serving disabled by default for security.
+      # Enable in docker-compose.override.yml for development if needed.
+      # LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED: "true"
+      # LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT: /label-studio/data
     volumes:
       - label_studio_data:/label-studio/data
     ports:
-      - "${LABEL_STUDIO_PORT:-8081}:8080"
+      - "127.0.0.1:${LABEL_STUDIO_PORT:-8081}:8080"
+    networks:
+      - backend
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\""]
       interval: 15s
@@ -299,6 +424,14 @@ services:
       retries: 10
       start_period: 60s
     restart: unless-stopped
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge
 
 volumes:
   postgres_data:

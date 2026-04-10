@@ -246,3 +246,5 @@ package.json
 # Superpowers brainstorming sessions
 superpowers/
 diagrams/
+
+.playwright-mcp/

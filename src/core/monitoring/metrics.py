@@ -1,12 +1,31 @@
-"""Prometheus metrics instrumentation for the serving API."""
+"""Prometheus metrics instrumentation for the serving API.
+
+Supports gunicorn multi-worker setups via ``PROMETHEUS_MULTIPROC_DIR``.
+When that environment variable is set, prometheus_client stores metric
+state in shared mmap files under the directory, and ``/metrics`` reads
+via ``MultiProcessCollector`` so all workers' counters are visible to
+Prometheus scrapes.
+"""
 
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
-from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+    multiprocess,
+)
 from prometheus_fastapi_instrumentator import Instrumentator
+from starlette.requests import Request
+from starlette.responses import Response
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -45,7 +64,13 @@ ACCUMULATION_BUFFER_GAUGE = Gauge(
 
 
 def setup_metrics(app: FastAPI) -> None:
-    """Attach Prometheus instrumentator and expose /metrics endpoint.
+    """Attach Prometheus instrumentation and expose ``/metrics``.
+
+    In multi-worker gunicorn setups, ``PROMETHEUS_MULTIPROC_DIR`` must be
+    set to a writable directory. When present, metric state is shared
+    across workers and ``/metrics`` serves a merged view via
+    ``MultiProcessCollector``. When unset, the default in-process
+    ``REGISTRY`` is used (single-worker / dev mode).
 
     Args:
         app: FastAPI application instance.
@@ -54,8 +79,30 @@ def setup_metrics(app: FastAPI) -> None:
         should_group_status_codes=True,
         excluded_handlers=["/metrics"],
     )
-    instrumentator.instrument(app).expose(app, endpoint="/metrics")
-    logger.info("Prometheus metrics enabled at /metrics")
+    instrumentator.instrument(app)
+
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+
+    if multiproc_dir:
+        # Build a per-request registry that merges all workers' mmap files.
+        async def _render_multiprocess_metrics(_request: Request) -> Response:
+            registry = CollectorRegistry()
+            multiprocess.MultiProcessCollector(registry)
+            data = generate_latest(registry)
+            return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+        app.add_route("/metrics", _render_multiprocess_metrics)
+        logger.info(
+            "Prometheus metrics enabled at /metrics (multiprocess dir=%s)",
+            multiproc_dir,
+        )
+    else:
+        async def _render_inprocess_metrics(_request: Request) -> Response:
+            data = generate_latest(REGISTRY)
+            return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+        app.add_route("/metrics", _render_inprocess_metrics)
+        logger.info("Prometheus metrics enabled at /metrics (in-process)")
 
 
 def record_prediction(
