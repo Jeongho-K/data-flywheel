@@ -63,6 +63,7 @@ def active_learning_flow(
     label_studio_project_id: int = 1,
     max_samples: int = 100,
     lookback_days: int = 1,
+    trigger_source: str = "manual",
 ) -> dict:
     """Active Learning pipeline: fetch uncertain predictions, select samples, create labeling tasks.
 
@@ -82,10 +83,15 @@ def active_learning_flow(
         label_studio_project_id: Label Studio project ID.
         max_samples: Maximum number of samples to send for labeling.
         lookback_days: Number of past days to scan for uncertain predictions.
+        trigger_source: Identifier for what initiated this run (e.g. ``manual``,
+            ``g5_medium_drift``, ``schedule``). Surfaced in the flow run
+            parameters and the summary artifact for observability.
 
     Returns:
         Dictionary with pipeline summary including counts at each stage.
     """
+    logger.info("Active learning pipeline triggered by: %s", trigger_source)
+
     # Step 1: Fetch uncertain predictions
     predictions = fetch_uncertain_predictions(
         s3_endpoint=s3_endpoint,
@@ -102,6 +108,7 @@ def active_learning_flow(
             "total_uncertain": 0,
             "selected": 0,
             "tasks_created": 0,
+            "trigger_source": trigger_source,
         }
         _create_summary_artifact(summary)
         return summary
@@ -126,6 +133,7 @@ def active_learning_flow(
         "selected": len(selected),
         "tasks_created": labeling_result.get("tasks_created", 0),
         "project_id": labeling_result.get("project_id", label_studio_project_id),
+        "trigger_source": trigger_source,
     }
 
     _create_summary_artifact(summary)
@@ -143,6 +151,7 @@ def _create_summary_artifact(summary: dict) -> None:
 | Metric | Value |
 |--------|-------|
 | Status | {summary.get("status", "unknown")} |
+| Trigger Source | {summary.get("trigger_source", "manual")} |
 | Total Uncertain Predictions | {summary.get("total_uncertain", 0)} |
 | Selected for Labeling | {summary.get("selected", 0)} |
 | Tasks Created in Label Studio | {summary.get("tasks_created", 0)} |

@@ -1,6 +1,7 @@
 # Platform Gap Analysis & 구현 로드맵
 
 > **작성일**: 2026-04-10
+> **최종 업데이트**: 2026-04-10 (Phase E-1 완료)
 > **목적**: 업계 표준 MLOps 플랫폼(ZenML, ClearML, MLRun, Lightly.ai, Google MLOps Level 2) 대비 data-flywheel 플랫폼의 격차를 식별하고, 다중 세션에 걸친 구현 로드맵을 제시한다.
 
 ---
@@ -36,8 +37,8 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 
 | 기능 | data-flywheel | ZenML | ClearML | Lightly.ai | MLRun | Google L2 |
 |------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Closed-Loop Retrain | ⚠️ Partial | ⚠️ Partial | ✅ | ✅ | ✅ | ✅ |
-| Event-Driven Triggers | ❌ **Missing** | ✅ | ✅ | N/A | ✅ | ✅ |
+| Closed-Loop Retrain | ✅ | ⚠️ Partial | ✅ | ✅ | ✅ | ✅ |
+| Event-Driven Triggers | ⚠️ **Partial** (E-1 완료, E-2 대기) | ✅ | ✅ | N/A | ✅ | ✅ |
 | Canary Deploy | ⚠️ Partial | ✅ (Seldon) | N/A | N/A | ✅ (Nuclio) | ✅ |
 | Shadow Deploy | ❌ | ✅ (Seldon) | N/A | N/A | ✅ | ✅ |
 | A/B Testing | ❌ | ✅ (Seldon) | N/A | N/A | ✅ | ✅ |
@@ -56,25 +57,25 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 
 ## 3. Gap 상세 분석
 
-### Gap 1: Event-Driven Automation 부재 (Critical) 🔴
+### Gap 1: Event-Driven Automation 부재 (Critical → Partial) 🟠
 
-**현상**: Core Philosophy #3 "Event-Driven Automation"을 명시하지만, 실제 event-driven 트리거가 부재.
+**원래 현상**: Core Philosophy #3 "Event-Driven Automation"을 명시하지만, 실제 event-driven 트리거가 부재.
 
-- Prefect deployment를 serve할 worker/agent 컨테이너가 `docker-compose.yml`에 없음
-- Label Studio webhook → CT 트리거: deployment가 serve되지 않으면 동작 불가
-- Drift 감지 → CT 트리거: `run_deployment()` 호출하지만 deployment 미등록
-- 모든 flow가 수동 실행 또는 코드 레벨 호출에 의존
+**진행 상황**: **Phase E-1 완료** (PR #26, commit `ab3d14a`).
 
-**업계 기준**: ZenML, ClearML, Google L2 모두 event-driven pipeline trigger를 핵심으로 지원. MLRun은 Nuclio 기반 real-time trigger 제공.
+- [x] `docker-compose.yml`에 `prefect-worker` 서비스 추가 (원래부터 존재하되 CT 단일 deployment만 서브) → 통합 `serve_all` 엔트리포인트로 전환
+- [x] Flow deployment 자동 등록 startup script 작성 (`src/core/orchestration/flows/serve_all.py`, 단일 `prefect.serve(...)` 호출)
+- [x] **CT, AL, monitoring, data-accumulation 4개 flow 모두 RunnerDeployment로 등록**
+  - `continuous-training-deployment` (event-driven)
+  - `active-learning-deployment` (event-driven)
+  - `monitoring-deployment` (cron `0 3 * * *`, daily)
+  - `data-accumulation-deployment` (cron `0 */6 * * *`)
+- [x] **Latent broken link 해소 확인**: `monitoring_flow._trigger_active_learning_pipeline()`이 호출하던 `run_deployment("active-learning-pipeline/active-learning-deployment")`가 실제로 worker에 도달 — 런타임 검증에서 `fetch-uncertain-predictions` + `select-samples-for-labeling`이 `Completed()` 상태로 실행됨 (이전에는 silent no-op).
+- [ ] Label Studio webhook → Prefect deployment 트리거 E2E 검증 (E-2)
+- [ ] Drift 감지 → CT deployment 자동 트리거 E2E 검증 (E-2)
+- [x] **S5 수정 완료**: `active_learning_flow`에 `trigger_source: str = "manual"` 인자 추가 (CT flow와 대칭). `monitoring_flow._trigger_active_learning_pipeline()`의 `run_deployment(..., parameters={"trigger_source": "g5_medium_drift"})` 호출이 이제 정상 수락되며, summary dict와 markdown artifact에도 trigger source가 노출되어 Prefect UI에서 "왜 이 AL run이 생성되었는지" 추적 가능. 회귀 테스트 2건 추가 (`test_flow_accepts_trigger_source_and_propagates_to_summary`, `test_flow_trigger_source_defaults_to_manual_on_empty_path`).
 
-**필요 조치**:
-- [ ] `docker-compose.yml`에 `prefect-worker` 서비스 추가
-- [ ] Flow deployment 자동 등록 startup script 작성
-- [ ] CT, monitoring, AL, data-accumulation flow를 deployment로 등록
-- [ ] Label Studio webhook → Prefect deployment 트리거 E2E 검증
-- [ ] Drift 감지 → CT deployment 자동 트리거 E2E 검증
-
-**예상 작업량**: 2~3 세션
+**남은 작업량**: 1 세션 (E-2 webhook/drift E2E 검증만 남음)
 
 ---
 
@@ -235,14 +236,26 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 
 ### Phase E: Event-Driven & Operational Hardening (우선순위 1)
 
-| 순서 | 작업 | Gap | 예상 세션 |
-|:---:|------|:---:|:---:|
-| E-1 | Prefect Worker 추가 & Deployment 자동 등록 | Gap 1 | 1 |
-| E-2 | Event-Driven Trigger 연결 (webhook → deploy, drift → CT) | Gap 1 | 1~2 |
-| E-3 | Alerting 시스템 구축 (Grafana + Prefect notifications) | Gap 7 | 1~2 |
-| E-4 | Rate Limiting & API Authentication | Gap 9 | 1 |
+| 순서 | 작업 | Gap | 예상 세션 | 상태 |
+|:---:|------|:---:|:---:|:---:|
+| E-1 | Prefect Worker 통합 serve_all & 4개 Deployment 등록 | Gap 1 | 1 | ✅ **완료** (PR #26, `ab3d14a`) |
+| E-2 | Event-Driven Trigger E2E 검증 (webhook → CT, drift → CT/AL) + S5 수정 | Gap 1 | 1~2 | ⏳ 대기 |
+| E-3 | Alerting 시스템 구축 (Grafana + Prefect notifications) | Gap 7 | 1~2 | ⏳ 대기 |
+| E-4 | Rate Limiting & API Authentication | Gap 9 | 1 | ⏳ 대기 |
 
 **완료 기준**: `docker compose up` 후 Label Studio annotation 완료 → 자동 CT 트리거 → 모델 갱신까지 수동 개입 없이 동작. Alert 발생 시 Slack 알림.
+
+#### E-1 완료 요약 (2026-04-10)
+
+- **커밋**: `ab3d14a feat(orchestration): unify prefect worker to serve all four core flows (#26)`
+- **변경 파일**: 7 files (+371 / −115)
+  - 신규: `src/core/orchestration/flows/serve_all.py`, `tests/unit/test_orchestration_serve_all.py`
+  - 수정: `docker/orchestration/Dockerfile` (image 0.2.0, pandas/evidently/scikit-learn 추가, ENTRYPOINT 교체), `docker-compose.yml` (prefect-worker env/depends_on 확장), `src/core/monitoring/metrics.py`+`src/core/serving/gunicorn/config.py` (pre-existing lint fix 동반)
+  - 삭제: `src/core/orchestration/flows/continuous_training_serve.py` (단일 CT serve 엔트리포인트, 통합본으로 대체)
+- **검증**:
+  - Unit: 316/316 pass (신규 5개 serve_all 테스트 포함)
+  - Runtime: Prefect API에 4개 deployment 정확한 이름/크론으로 등록, AL deployment 트리거 → worker가 flow run pick up → `fetch-uncertain-predictions` + `select-samples-for-labeling` `Completed()` 도달
+  - CI: Lint (Ruff) ✓, Unit Tests ✓
 
 ### Phase F: Advanced Active Learning (우선순위 2)
 
