@@ -377,6 +377,51 @@ class TestActiveLearningFlow:
         assert result["selected"] == 0
         assert result["tasks_created"] == 0
 
+    def test_flow_accepts_trigger_source_and_propagates_to_summary(self):
+        """Regression test for Phase E-2 S5: monitoring_flow passes
+        ``trigger_source="g5_medium_drift"`` via run_deployment and the AL flow
+        must accept it as a parameter (previously unknown-kwarg would fail
+        silently behind a best-effort try/except in monitoring_flow).
+        """
+        from src.core.orchestration.flows.active_learning_flow import active_learning_flow
+
+        predictions = [{"uncertainty_score": 0.9, "routing_decision": "human_review"}]
+
+        with (
+            patch(
+                "src.core.orchestration.flows.active_learning_flow.fetch_uncertain_predictions",
+                return_value=predictions,
+            ),
+            patch(
+                "src.core.orchestration.flows.active_learning_flow.select_samples_for_labeling",
+                return_value=predictions,
+            ),
+            patch(
+                "src.core.orchestration.flows.active_learning_flow.create_labeling_tasks",
+                return_value={"tasks_created": 1, "project_id": 1},
+            ),
+            patch("src.core.orchestration.flows.active_learning_flow.create_markdown_artifact"),
+        ):
+            result = active_learning_flow.fn(trigger_source="g5_medium_drift")
+
+        assert result["status"] == "completed"
+        assert result["trigger_source"] == "g5_medium_drift"
+
+    def test_flow_trigger_source_defaults_to_manual_on_empty_path(self):
+        """Empty-predictions branch must also carry the default trigger_source."""
+        from src.core.orchestration.flows.active_learning_flow import active_learning_flow
+
+        with (
+            patch(
+                "src.core.orchestration.flows.active_learning_flow.fetch_uncertain_predictions",
+                return_value=[],
+            ),
+            patch("src.core.orchestration.flows.active_learning_flow.create_markdown_artifact"),
+        ):
+            result = active_learning_flow.fn()
+
+        assert result["trigger_source"] == "manual"
+
 
 # ---------------------------------------------------------------------------
 # Data Accumulation Flow tests
