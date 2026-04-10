@@ -9,6 +9,42 @@ See: https://docs.gunicorn.org/en/stable/settings.html
 
 import multiprocessing
 import os
+import shutil
+from pathlib import Path
+
+
+def on_starting(server):  # type: ignore[no-untyped-def]
+    """Prepare ``PROMETHEUS_MULTIPROC_DIR`` before workers fork.
+
+    prometheus_client writes per-process mmap files here. The directory
+    must exist and be empty at start to avoid carrying stale counters
+    from a previous invocation.
+    """
+    multiproc_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+    if not multiproc_dir:
+        return
+    path = Path(multiproc_dir)
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+    server.log.info("Initialized PROMETHEUS_MULTIPROC_DIR at %s", path)
+
+
+def child_exit(server, worker):  # type: ignore[no-untyped-def]
+    """Mark worker as dead for prometheus_client multiprocess mode.
+
+    Prevents stale mmap files from dead workers affecting aggregated
+    metrics.
+    """
+    if not os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
+        return
+    try:
+        from prometheus_client import multiprocess
+
+        multiprocess.mark_process_dead(worker.pid)
+    except Exception as exc:  # pragma: no cover
+        server.log.warning("Failed to mark worker %s dead: %s", worker.pid, exc)
+
 
 # Server socket
 bind = os.getenv("GUNICORN_BIND", "0.0.0.0:8000")

@@ -19,7 +19,7 @@ from tests.e2e.helpers.e2e_utils import (
     flush_prediction_logger,
     get_s3_objects,
     predict_image,
-    query_prometheus_metric_value,
+    wait_for_prometheus_metric,
 )
 
 if TYPE_CHECKING:
@@ -105,12 +105,19 @@ class TestConfidenceRouting:
         self,
         prometheus_base_url: str,
     ) -> None:
-        """Prometheus should have al_routing_decision_total metric with value > 0."""
-        value = query_prometheus_metric_value(
+        """Prometheus should have ``al_routing_decision_total`` > 0.
+
+        Uses ``wait_for_prometheus_metric`` so the test tolerates the
+        Prometheus scrape window (15s) that otherwise makes this flaky
+        on freshly recreated stacks.
+        """
+        value = wait_for_prometheus_metric(
             prometheus_base_url,
-            "al_routing_decision_total",
+            "sum(al_routing_decision_total)",
+            timeout=45.0,
+            poll_interval=5.0,
         )
-        assert value is not None and value > 0, f"Expected al_routing_decision_total > 0, got {value}"
+        assert value > 0, f"Expected al_routing_decision_total > 0, got {value}"
 
 
 class TestAutoAccumulation:

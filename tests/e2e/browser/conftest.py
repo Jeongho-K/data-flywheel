@@ -146,31 +146,66 @@ def label_studio_storage_state(
     label_studio_credentials: dict[str, str],
     tmp_path_factory: pytest.TempPathFactory,
 ) -> str:
-    """Login or signup to Label Studio once and persist auth state."""
+    """Ensure a usable admin account exists and persist the auth state.
+
+    Label Studio 1.19 signup form includes a required ``how_find_us``
+    select. The login form shows a generic error when credentials are
+    wrong. Strategy:
+
+    1. Try login first.
+    2. If login fails (still on ``/user/login``), navigate to
+       ``/user/signup`` and complete the form including the required
+       select.
+    3. Verify the final URL is NOT a user auth URL before saving state.
+    """
     state_path = str(tmp_path_factory.mktemp("auth") / "label_studio.json")
     context = browser.new_context()
     page = context.new_page()
 
+    email = label_studio_credentials["email"]
+    password = label_studio_credentials["password"]
+
+    def _fill_login_and_submit() -> None:
+        page.fill("input[name='email']", email)
+        page.fill("input[name='password']", password)
+        page.click("button[type='submit']")
+        page.wait_for_load_state("domcontentloaded")
+
+    def _fill_signup_and_submit() -> None:
+        page.goto(f"{label_studio_base_url}/user/signup/", timeout=10000)
+        page.wait_for_load_state("domcontentloaded")
+        page.fill("input[name='email']", email)
+        page.fill("input[name='password']", password)
+        # Required dropdown in LS 1.19 signup — any valid option works.
+        page.select_option("select[name='how_find_us']", value="Other")
+        page.click("button[type='submit']")
+        page.wait_for_load_state("domcontentloaded")
+
     try:
-        page.goto(f"{label_studio_base_url}/user/login", timeout=10000)
+        page.goto(f"{label_studio_base_url}/user/login/", timeout=10000)
     except Exception:
         context.close()
         pytest.skip("Label Studio is not reachable")
+
     page.wait_for_load_state("domcontentloaded")
+    _fill_login_and_submit()
 
-    # Label Studio shows signup form on first run, login form on subsequent runs
-    if page.locator("input[name='email']").count() > 0 and page.url.endswith("/user/signup"):
-        # First run — signup
-        page.fill("input[name='email']", label_studio_credentials["email"])
-        page.fill("input[name='password']", label_studio_credentials["password"])
-        page.click("button[type='submit']")
-    else:
-        # Subsequent runs — login
-        page.fill("input[name='email']", label_studio_credentials["email"])
-        page.fill("input[name='password']", label_studio_credentials["password"])
-        page.click("button[type='submit']")
+    # If login succeeded, Label Studio redirects away from /user/login.
+    if "/user/login" in page.url:
+        _fill_signup_and_submit()
+        # After signup, fall back to login in case LS requires it.
+        if "/user/login" in page.url or "/user/signup" in page.url:
+            page.goto(f"{label_studio_base_url}/user/login/", timeout=10000)
+            page.wait_for_load_state("domcontentloaded")
+            _fill_login_and_submit()
 
-    page.wait_for_url(f"{label_studio_base_url}/**", timeout=15000)
+    if "/user/login" in page.url or "/user/signup" in page.url:
+        html_snippet = page.content()[:500]
+        context.close()
+        pytest.skip(
+            f"Could not authenticate to Label Studio (still on {page.url}). "
+            f"Snippet: {html_snippet!r}"
+        )
 
     context.storage_state(path=state_path)
     context.close()

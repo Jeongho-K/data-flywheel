@@ -62,12 +62,15 @@ class TestPrometheusMetrics:
             except httpx.RequestError as exc:
                 logger.warning("Prediction %d failed: %s", i + 1, exc)
 
-        # Wait for Prometheus to scrape the updated counter
+        # Wait for Prometheus to scrape the updated counter.
+        # Pass the baseline so the helper keeps polling until the counter
+        # actually moves, not just any non-zero value.
         after = wait_for_prometheus_metric(
             prometheus_base_url,
             "sum(prediction_class_total)",
             timeout=60.0,
             poll_interval=5.0,
+            min_value=before,
         )
         assert after > before, f"Counter did not increase: before={before}, after={after}"
 

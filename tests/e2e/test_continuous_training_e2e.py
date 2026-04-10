@@ -68,9 +68,14 @@ class TestMLflowIntegration:
         logger.info("MLflow server healthy at %s", mlflow_base_url)
 
     def test_02_search_experiments(self, mlflow_base_url: str) -> None:
-        """GET /api/2.0/mlflow/experiments/search should return experiments."""
-        response = httpx.get(
+        """POST /api/2.0/mlflow/experiments/search should return experiments.
+
+        MLflow requires a positive ``max_results`` and prefers POST for this
+        endpoint (GET is not supported on recent versions).
+        """
+        response = httpx.post(
             f"{mlflow_base_url}/api/2.0/mlflow/experiments/search",
+            json={"max_results": 100},
             timeout=10.0,
         )
         assert response.status_code == 200, f"MLflow experiments search returned {response.status_code}"

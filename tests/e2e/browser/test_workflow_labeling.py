@@ -58,11 +58,18 @@ class TestLabelingWorkflow:
         reason="Label Studio is not reachable",
     )
     def test_03_labeling_interface_elements(self, label_studio_page: Page, label_studio_base_url: str):
-        """Label Studio should expose annotation-related UI elements."""
+        """Label Studio should expose annotation-related UI elements.
+
+        The Label Studio React shell does not use semantic ``<header>``
+        or ``<nav>`` tags. Assert instead that the authenticated
+        projects-page app shell has rendered by checking for both the
+        ``Projects`` heading and the ``Create`` action button.
+        """
         label_studio_page.goto(f"{label_studio_base_url}/projects")
         label_studio_page.wait_for_load_state("domcontentloaded")
 
-        expect(label_studio_page.locator("header, nav").first).to_be_visible(timeout=10000)
+        expect(label_studio_page.get_by_text("Projects").first).to_be_visible(timeout=10000)
+        expect(label_studio_page.get_by_text("Create").first).to_be_visible(timeout=10000)
 
     def test_04_api_webhook_endpoint_exists(self, api_base_url: str):
         """API webhook endpoint should be reachable (POST-only)."""

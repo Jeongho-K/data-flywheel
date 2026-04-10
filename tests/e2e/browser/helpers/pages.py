@@ -106,20 +106,37 @@ class LabelStudioPage:
         self.base_url = base_url
 
     def login_or_signup(self, email: str, password: str) -> None:
-        """Handle both first-run signup and subsequent login."""
-        self.page.goto(f"{self.base_url}/user/login")
+        """Handle both first-run signup and subsequent login.
+
+        Label Studio 1.19 signup includes a required ``how_find_us``
+        dropdown. This helper tries login first; if it fails (URL is
+        still ``/user/login``), it navigates to signup, completes the
+        full form, then falls back to login.
+        """
+        self.page.goto(f"{self.base_url}/user/login/")
+        self.page.wait_for_load_state("domcontentloaded")
+        self.page.fill("input[name='email']", email)
+        self.page.fill("input[name='password']", password)
+        self.page.click("button[type='submit']")
         self.page.wait_for_load_state("domcontentloaded")
 
-        if self.page.url.endswith("/user/signup"):
+        if "/user/login" in self.page.url:
+            self.page.goto(f"{self.base_url}/user/signup/")
+            self.page.wait_for_load_state("domcontentloaded")
             self.page.fill("input[name='email']", email)
             self.page.fill("input[name='password']", password)
+            self.page.select_option("select[name='how_find_us']", value="Other")
             self.page.click("button[type='submit']")
-        else:
-            self.page.fill("input[name='email']", email)
-            self.page.fill("input[name='password']", password)
-            self.page.click("button[type='submit']")
+            self.page.wait_for_load_state("domcontentloaded")
 
-        self.page.wait_for_url(f"{self.base_url}/**", timeout=15000)
+            if "/user/login" in self.page.url or "/user/signup" in self.page.url:
+                # Signup may leave us on login — retry login with the new creds.
+                self.page.goto(f"{self.base_url}/user/login/")
+                self.page.wait_for_load_state("domcontentloaded")
+                self.page.fill("input[name='email']", email)
+                self.page.fill("input[name='password']", password)
+                self.page.click("button[type='submit']")
+                self.page.wait_for_load_state("domcontentloaded")
 
     def navigate_to_projects(self) -> None:
         """Navigate to the projects page."""

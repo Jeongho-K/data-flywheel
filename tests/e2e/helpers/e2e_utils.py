@@ -269,26 +269,36 @@ def wait_for_prometheus_metric(
     query: str,
     timeout: float = 60.0,
     poll_interval: float = 5.0,
+    min_value: float = 0.0,
 ) -> float:
-    """Poll Prometheus until a metric returns a non-zero value.
+    """Poll Prometheus until a metric strictly exceeds ``min_value``.
 
     Args:
         prometheus_base_url: Prometheus base URL.
         query: PromQL expression.
         timeout: Maximum wait time in seconds.
         poll_interval: Seconds between polls.
+        min_value: Return only once the scraped value is strictly greater
+            than this threshold. Callers that want "counter increased
+            since baseline" should pass the baseline here.
 
     Returns:
-        The metric value.
+        The metric value once it exceeds ``min_value``.
 
     Raises:
-        TimeoutError: If metric not found within timeout.
+        TimeoutError: If the metric never exceeds ``min_value`` in time.
     """
     deadline = time.monotonic() + timeout
+    last_value: float | None = None
     while time.monotonic() < deadline:
         value = query_prometheus_metric_value(prometheus_base_url, query)
-        if value is not None and value > 0:
-            return value
+        if value is not None:
+            last_value = value
+            if value > min_value:
+                return value
         time.sleep(poll_interval)
-    msg = f"Metric '{query}' not found or zero within {timeout}s"
+    msg = (
+        f"Metric '{query}' did not exceed {min_value} within {timeout}s"
+        f" (last observed: {last_value})"
+    )
     raise TimeoutError(msg)
