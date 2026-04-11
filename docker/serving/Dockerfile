@@ -25,7 +25,9 @@ RUN uv pip install --system --no-cache-dir \
     pydantic-settings>=2.7 \
     boto3>=1.35 \
     prometheus-client>=0.21 \
-    prometheus-fastapi-instrumentator>=7.0
+    prometheus-fastapi-instrumentator>=7.0 \
+    prefect>=3.0 \
+    httpx>=0.27
 
 # --- Stage 2: Runtime ---
 FROM python:3.11.12-slim AS runtime
