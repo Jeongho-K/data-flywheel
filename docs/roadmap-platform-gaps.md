@@ -1,7 +1,7 @@
 # Platform Gap Analysis & 구현 로드맵
 
 > **작성일**: 2026-04-10
-> **최종 업데이트**: 2026-04-10 (Phase E-1 완료, E-2 부분 완료: S5 signature fix, E-3 부분 완료: Grafana 다중 채널 알림 베이스라인)
+> **최종 업데이트**: 2026-04-12 (Phase E-2 post-audit 완료: data_accumulation narrow-catch + orchestration counter prime; E-3 Prefect notification block 선행조건 해제)
 > **목적**: 업계 표준 MLOps 플랫폼(ZenML, ClearML, MLRun, Lightly.ai, Google MLOps Level 2) 대비 data-flywheel 플랫폼의 격차를 식별하고, 다중 세션에 걸친 구현 로드맵을 제시한다.
 
 ---
@@ -12,17 +12,17 @@
 >
 > **🔴 먼저 §0.5 【중요】 문서 유지 규칙을 읽었는가?** — 읽지 않았다면 지금 스크롤을 내려 §0.5 A~G 를 먼저 확인하고, 특히 C(End-of-Session 프로토콜)와 E(Anti-Patterns)는 반드시 숙지한 후 작업을 개시한다. 이 문서는 규칙 위반에 취약하며, 규칙 위반은 과거 세션의 기록을 소리 없이 손상시킨다.
 
-- **Last updated**: 2026-04-11
+- **Last updated**: 2026-04-12
 - **Current phase**: **Phase E — Event-Driven & Operational Hardening** (우선순위 1)
-- **Last commit on roadmap track**: `bd9cd13 docs(roadmap): E-2 runtime verification session log + resume pointer update` (branch `fix/phase-e2-al-flow-trigger-source`, 3-commit stack on top of main)
+- **Last commit on roadmap track**: `10c7de9 fix(orchestration): narrow data_accumulation trigger catch + prime trigger failure counter` (branch `fix/phase-e-data-accumulation-narrow-catch-and-counter-prime`, 1 code commit + 1 docs commit on top of main). PR open/merge 대기.
 - **Latest completed units**:
-  - E-2 runtime E2E + silent concealer 4곳 제거 (branch `fix/phase-e2-al-flow-trigger-source`) → §6-E2-runtime
+  - E-2 post-audit: data_accumulation narrow-catch + counter prime (`10c7de9`) → §6-E2-post-audit
+  - E-2 runtime E2E + silent concealer 4곳 제거 → §6-E2-runtime
   - E-3 베이스라인 (`b8c7f8a`) → §6-E3
   - E-2 서브태스크 S5 (PR #27, `9e92463`) → §6-E2-S5
-  - E-1 전체 (PR #26, `ab3d14a`) → §6-E1
-- **Next action (immediate)**: **api 이미지 의존성 결손 수정** — `docker/serving/Dockerfile` 에 `prefect` + `httpx` 추가 → Label Studio project 시드 → webhook → CT E2E 완주. narrow-catch 가 노출한 최대 가치 finding 이라 조기 처리 권장. 자세한 체크리스트는 §4 Phase E-2 Task Board 참조.
-- **Secondary next**: E-3 잔여 — Prefect notification block 연동 (`orchestration_trigger_failure_total` counter 위에서 PromQL alert 발화) + Alert 4채널 E2E 발화 스모크. 상세는 §4 Phase E-3 Task Board 참조.
-- **Known blocker**: (없음) docker 데몬 기동 환경에서 E-2 drift HIGH/MEDIUM 경로는 이번 세션에 완주됨.
+- **Next action (immediate)**: **Phase E-3 Prefect notification block 연동** — 이제 `orchestration_trigger_failure_total{trigger_type,error_class}` 가 api `/metrics` 에 scrapeable (5개 trigger_type × error_class=none 으로 prime 된 상태), PromQL alert 경로 정의 가능. 선행조건 §0 #4 가 본 세션에서 해제됨. 상세는 §4 Phase E-3 Task Board 참조.
+- **Secondary next**: api 이미지 의존성 결손 수정 (`docker/serving/Dockerfile` 에 `prefect` + `httpx` 추가) → webhook → CT E2E 완주. §6-E2-runtime 에서 최초 노출, 본 세션 Gate 2/3 에서 재확인.
+- **Known blocker**: (없음)
 
 ### Verify state before resuming
 
@@ -30,18 +30,25 @@
 # 1. Git state
 git log --oneline -10
 
-# 2. Unit regression (324 total; narrow-except + webhook regression 포함)
+# 2. Unit regression (335 total; narrow-except + webhook regression + data_accumulation narrow-catch + counter taxonomy + setup_metrics prime 포함)
 uv run pytest tests/unit -q
 
-# 3. Silent concealer 회귀 체크 — `except Exception:` 이 다시 등장했는지 확인
+# 3. Silent concealer 회귀 체크 — `except Exception:` 이 다시 등장했는지 확인 (data_accumulation_flow 추가)
 grep -n "except Exception" src/core/orchestration/flows/monitoring_flow.py \
+  src/core/orchestration/flows/data_accumulation_flow.py \
   src/core/active_learning/labeling/webhook.py
 # 허용: docstring 내 역사 서술만. 실제 catch 구문이 있으면 regression.
 
-# 4. Orchestration counter import chain — FastAPI-free 모듈에서 worker 로 접근 가능
-python -c "from src.core.monitoring.orchestration_counter import ORCHESTRATION_TRIGGER_FAILURE_COUNTER; print('OK', ORCHESTRATION_TRIGGER_FAILURE_COUNTER._name)"
+# 4. Dead _run_async 회귀 체크 — 두 flow 에서 모두 제거되었는지 확인
+grep -n "_run_async" src/core/orchestration/flows/monitoring_flow.py \
+  src/core/orchestration/flows/data_accumulation_flow.py
+# 허용: docstring history reference 만. 실행 가능한 def/call 이 있으면 regression.
 
-# 5. Drift fixture seeder 동작 미리 보기
+# 5. Orchestration counter scrapeable on api /metrics — multiproc prime 확인
+curl -fsS http://localhost:8000/metrics | grep -cE "^# (HELP|TYPE) orchestration_trigger_failure_total|^orchestration_trigger_failure_total"
+# 예상: 7 (1 HELP + 1 TYPE + 5 primed zero samples per _KNOWN_TRIGGER_TYPES).
+
+# 6. Drift fixture seeder 동작 미리 보기
 uv run python -c "
 from scripts.seed_drift_fixtures import _deterministic_medium_current
 from scripts.run_evidently_demo import generate_prediction_data
@@ -56,10 +63,12 @@ print('medium drift_score:', detect_drift(ref, curr)['drift_score'])  # 0.5 expe
 
 - [ ] **[api 이미지 의존성 결손]** `docker/serving/Dockerfile` 에 `prefect` + `httpx` 추가. 현재 webhook 핸들러가 `ImportError` 로 silent no-op (narrow-catch 가 노출). Label Studio project 시드 + API key 세팅 후 webhook → CT E2E 완주. 출처: §6-E2-runtime. **우선순위: High** (Gate 2/3 quality gates 에서도 재확인됨 — webhook 경로가 역사적으로 한 번도 발화한 적 없음).
 - [ ] **[serving `/model/reload` 422]** `_trigger_rollback()` 의 MLflow alias 이동은 성공하지만 serving 컨테이너 `/model/reload` 엔드포인트가 422 Unprocessable Entity 를 반환해 새 champion 이 실전 반영되지 않음. payload schema 확인 필요. 출처: §6-E2-runtime.
-- [ ] **[`_run_async` 잔존자 감사]** `src/core/orchestration/flows/data_accumulation_flow.py` 에 아직 `_run_async(run_deployment(...))` 패턴이 남아 있을 가능성. 이는 E-2 runtime 에서 발견된 pre-existing ValueError(`asyncio.run(FlowRun)`) 버그와 동일한 형태이며, `data_accumulation_flow` 내부 catch 가 아직 bare `except Exception` 인지도 함께 감사. 출처: Gate 2 pr-reviewer finding (quality-gates pipeline run 2026-04-11). **우선순위: Medium** — data accumulation 경로도 silent 하게 깨져 있을 가능성.
-- [ ] **[`orchestration_trigger_failure_total` 관측 표면 활성화]** `prometheus_client` 의 labeled counter 는 `.labels(...).inc()` 가 최소 1회 호출되기 전까지 `/metrics` 에 metric family 자체가 나타나지 않는다. 현재 api 컨테이너는 narrow-catch 경로를 밟기 전에 `ImportError` 로 먼저 탈출하므로 counter bump 라인에 도달한 적이 없음 → `curl /metrics | grep orchestration_trigger` 결과가 공란. wiring 자체는 정확하며 첫 실제 실패 시 즉시 노출됨. **조치 옵션**: (a) api 이미지 deps 수정(위 첫 항목) 후 자연 해소, (b) `metrics.py` 에서 모듈 로드 시 `0` 샘플을 한 번 prime 해두기 (`counter.labels(trigger_type="bootstrap", error_class="none").inc(0)`). Prefect notification block 연동 전에 반드시 먼저 해결. 출처: Gate 3 runtime-verifier finding (quality-gates pipeline run 2026-04-11).
+- [ ] **[`ContinuousTrainingConfig.deployment_name` 기본값 불일치]** `config.py` 의 default 는 `"continuous-training/continuous-training-deployment"` 이지만 Phase E-1 (`serve_all.py`) 가 등록한 실제 이름은 `"continuous-training-pipeline/continuous-training-deployment"` (`-pipeline` 접미사). 본 세션 runtime E2E 에서 happy-path 가 `True` 를 반환했음 — docker compose 환경 변수 혹은 배치 환경이 이 default 를 overriding 하고 있을 가능성. 다음 세션에서 default 를 정합하거나 `CT_DEPLOYMENT_NAME` 을 compose 에 고정. **우선순위: Medium**. 출처: 본 세션 §6-E2-post-audit 탐색.
+- [ ] **[`CT_*` env vars 작업 풀 inherit 검증]** `data-accumulation-pipeline` work pool 이 `CT_*` 환경 변수를 올바르게 상속하는지 확인하여 `ContinuousTrainingConfig()` 가 production 에서 `ValidationError` 로 쓰러지지 않도록 한다. 본 세션에서 narrow-catch 를 의도적으로 ValidationError 에 열지 않았기 때문에 (loud failure 원칙) 이 전제가 깨지면 data accumulation flow 전체가 터진다. **우선순위: Low** (docs/verification follow-up). 출처: 본 세션 §6-E2-post-audit 설계 결정.
+- [ ] **[Prometheus multiproc prime 감사]** 본 세션에서 `setup_metrics()` 안에 prime 블록을 넣었으며 gunicorn worker 가 fork 후 각자 mmap 파일을 터치해 5개 trigger_type 이 `/metrics` 에 모두 노출됨을 live 상태에서 확인. 이 가정이 깨지는 경로(예: 미래의 gunicorn `preload_app = True` 설정 변경 + `post_fork` 재-prime 미등록) 를 CI smoke 에 고정. `curl /metrics | grep -c orchestration_trigger_failure_total >= 7` 를 CI 에 추가. **우선순위: Low**. 출처: 본 세션 §6-E2-post-audit 설계 결정.
+- [ ] **[Worker ↔ api `/metrics` 연합 부재]** 본 세션 Layer 3 E2E 에서 확인: worker 프로세스의 narrow-catch 카운터 증가분은 worker 의 in-process Prometheus 레지스트리에만 남고 api 컨테이너의 `/metrics` 로 federate 되지 않는다. 현재는 (1) webhook path 만 api 프로세스 안에서 실행되므로 `/metrics` 에 직접 노출되고 (2) worker path (`ct_on_drift`, `rollback`, `al_on_medium_drift`, `ct_on_accumulation`) 의 실제 실패는 Pushgateway 경유 또는 worker 측 `/metrics` 노출이 필요. Phase E-3 Prefect notification block 설계 단계에서 함께 해결. **우선순위: Medium**. 출처: 본 세션 §6-E2-post-audit Gate 3 live observation.
 - [ ] **[Alert 발화 E2E]** docker compose 환경에서 drift/error rate/latency 임계치를 인위적으로 하향 → Grafana 4채널(Email/Slack/Generic Webhook/PagerDuty) 동시 수신 확인. 출처: §6-E3, Gap 7.
-- [ ] **[Prefect notification block]** Quality gate 실패(G1~G5) → Prefect notification block 연동. 이제 `orchestration_trigger_failure_total{trigger_type,error_class}` counter 가 있어 PromQL → notification block 경로가 가능. **전제 조건**: 위 "관측 표면 활성화" 티켓 해결 (counter 가 실제로 `/metrics` 에 노출되는 상태여야 PromQL alert 가 발화할 수 있음). 출처: Gap 7 잔여, §6-E3.
+- [ ] **[Prefect notification block]** Quality gate 실패(G1~G5) → Prefect notification block 연동. 이제 `orchestration_trigger_failure_total{trigger_type,error_class}` 가 api `/metrics` 에 scrapeable (본 세션 §6-E2-post-audit 에서 prime 완료) → PromQL → notification block 경로 정의 가능. **전제 조건 해제됨**: §0 #4 가 본 세션에서 close 됨. 남은 작업은 worker-side counter federation (위 Worker ↔ api 연합 부재 티켓) 과 alert rule 정의. 출처: Gap 7 잔여, §6-E3.
 
 ---
 
@@ -437,6 +446,7 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 - [x] ~~Drift HIGH 감지 → `continuous-training-deployment` 자동 트리거 + MLflow rollback 체인 검증~~ → §6-E2-runtime
 - [x] ~~Drift MEDIUM 감지 → `active-learning-deployment` + `continuous-training-deployment` 병행 트리거 검증 (S5 해제로 이제 가능)~~ → §6-E2-runtime
 - [x] ~~**알려진 follow-up 티켓**: `_trigger_active_learning_pipeline()` 의 bare `except Exception:` 을 `ImportError` + `PrefectException` 으로 좁히고 실패 시 `log.ERROR` 또는 metric 승격 (silent failure concealer 제거)~~ → §6-E2-runtime (4곳 모두 좁힘, `orchestration_trigger_failure_total` counter 신설)
+- [x] ~~**`_run_async` 잔존자 감사 — `data_accumulation_flow._trigger_retraining` narrow-catch + `_run_async` 제거**~~ → §6-E2-post-audit (Medium priority §0 follow-up #3 closed; happy path creates real Prefect flow run with `trigger_source=data_accumulated`, narrow-catch delta=+1 on `ObjectNotFound` verified live)
 
 #### E-3 Task Board
 
@@ -444,7 +454,8 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 - [x] ~~Alert rule 템플릿화 확인 (`configs/grafana/alerting/alerts.yml` 의 3개 rule + severity 라벨)~~ → §6-E3
 - [x] ~~G5 HIGH severity → PagerDuty-style escalation (`configs/grafana/alerting/notification-policies.yml` 의 `severity = critical` matcher + `continue: true`)~~ → §6-E3
 - [x] ~~Compose 환경 변수 포워딩 (`GF_SMTP_*` + `GRAFANA_*` + `.env.example` alerting 블록)~~ → §6-E3
-- [ ] Quality gate failure → Prefect notification block 연동 (후속)
+- [x] ~~**`orchestration_trigger_failure_total` 관측 표면 활성화 (counter prime)** — `setup_metrics()` 안에서 fork 후 per-worker prime 하여 5개 trigger_type 이 api `/metrics` 에서 즉시 scrapeable~~ → §6-E2-post-audit (§0 #4 closed — Prefect notification block 의 선행조건 해제)
+- [ ] Quality gate failure → Prefect notification block 연동 (후속 — 선행조건 해제됨)
 - [ ] Alert firing E2E 테스트 (docker compose 환경에서 임계치 인위 하향 → 4채널 발화 확인)
 
 #### E-4 Task Board
@@ -665,6 +676,71 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 - **New follow-up tickets (carry-over to §0)**:
   - **[api 이미지 의존성 결손]** `docker/serving/Dockerfile` 에 `prefect` + `httpx` 미포함. Label Studio webhook 핸들러가 역사적으로 `ImportError` 로 silent no-op. narrow-catch 가 노출한 최대 가치 finding. 우선순위: High.
   - **[model reload endpoint 422]** `http://api:8000/model/reload` 가 422 Unprocessable Entity 를 반환. `_trigger_rollback()` 의 MLflow alias 이동은 성공하지만 serving 리로드가 막혀서 새 champion 이 실전에 반영되지 않음. 우선순위: Medium.
+
+---
+
+### 6-E2-post-audit · data_accumulation narrow-catch + counter observability prime (2026-04-12)
+
+- **Commit**: `10c7de9 fix(orchestration): narrow data_accumulation trigger catch + prime trigger failure counter` (branch `fix/phase-e-data-accumulation-narrow-catch-and-counter-prime`). Docs commit appended afterwards.
+- **PR**: (pending — opened after §6 block commit per §0.5 C protocol)
+- **Gap**: Gap 1 (Event-Driven Automation) + Gap 7 (Alerting/Notification — observability prerequisite)
+- **Scope**: Close §0 carry-over follow-ups #3 (`_run_async` survivor in `data_accumulation_flow`) + #4 (`orchestration_trigger_failure_total` metric family invisible at `/metrics`). Promote `_record_trigger_failure` from `monitoring_flow` local helper to public `record_trigger_failure` shared helper in `orchestration_counter`.
+
+- **Problem (두 latent failure 원인을 한 세션에 정리)**:
+  1. `data_accumulation_flow._trigger_retraining()` 가 `_run_async(run_deployment(...))` 패턴을 그대로 사용하고 있었다. `run_deployment` 은 `@sync_compatible` 이라 sync 컨텍스트에서 호출 시 `FlowRun` 객체를 동기적으로 반환하는데, 이를 `asyncio.run(FlowRun)` 으로 감싸면 `ValueError: a coroutine was expected` 가 발생한다. 감싸고 있던 `except Exception:` 이 예외를 삼키며 `return False` 로 전환했기 때문에 **data accumulation → CT 트리거가 flow 도입 이후 단 한 번도 실제로 발화한 적이 없다**. §6-E2-runtime 이 `monitoring_flow` 에서 찾은 silent failure 의 동일 클래스 — 다른 위치.
+  2. `orchestration_trigger_failure_total` 은 `(trigger_type, error_class)` 로 label 된 counter. `prometheus_client` 의 labeled counter 는 `.labels(...).inc()` 가 최소 1회 호출되기 전까지 `/metrics` 에 metric family 를 노출하지 않는다. api + api-canary 는 multi-worker gunicorn 으로 `PROMETHEUS_MULTIPROC_DIR=/tmp/prom_multiproc` 가 세팅되어 있어 각 worker 가 자신의 mmap 파일을 fork 후 터치해야 `MultiProcessCollector` 가 scrape 시점에 병합된 zero 샘플을 노출한다. 기존 상태에서 `curl http://localhost:8000/metrics | grep orchestration_trigger` 결과는 공란 — Phase E-3 Prefect notification block 이 정의할 PromQL alert 의 대상이 scrape 시점에 존재하지 않는 문제. 이 선행조건이 해제되지 않으면 E-3 후속이 자연스럽게 막힌다.
+
+- **Changes** ([x] = 이번 블록에서 완료, [ ] = 후속):
+  - [x] `src/core/monitoring/orchestration_counter.py`: `_KNOWN_TRIGGER_TYPES` 튜플 신설 (5개 canonical trigger type 을 taxonomy 로 고정), `record_trigger_failure(trigger_type, exc)` 을 공개 helper 로 승격 (이전에는 `monitoring_flow.py` 내부 local `_record_trigger_failure`), 모듈 docstring 에 "any new trigger site MUST register its type here" invariant 명시. FastAPI-free 유지 (worker import 허용).
+  - [x] `src/core/monitoring/metrics.py::setup_metrics()`: `/metrics` 라우트 attach 후 `_KNOWN_TRIGGER_TYPES` 를 iterate 하면서 `.labels(trigger_type=tt, error_class="none").inc(0)` 을 호출하는 prime 블록 추가. multi-worker gunicorn 에서 fork 후 각 worker 가 setup_metrics 를 실행하기 때문에 각자의 mmap 파일에 써진다.
+  - [x] `src/core/orchestration/flows/monitoring_flow.py`: local `_record_trigger_failure` helper 제거, 3개 narrow-catch 사이트 (`_trigger_retraining_on_drift`, `_trigger_rollback`, `_trigger_active_learning_pipeline`) 를 shared helper 로 lazy-import 전환 (각 catch branch 내부, module top 금지). `_run_async` helper 도 함께 제거 (§6-E2-runtime 이후 caller 0개 확인) + `Coroutine` TYPE_CHECKING import 제거.
+  - [x] `src/core/active_learning/labeling/webhook.py`: 로컬 `_record_failure` 클로저 제거, `record_trigger_failure("ct_on_labeling", exc)` 호출로 교체. 두 catch branch (`httpx.HTTPError`, `PrefectException`) 모두 공유 helper 사용. ImportError→FastAPI 500 경로 그대로 유지.
+  - [x] `src/core/orchestration/flows/data_accumulation_flow.py::_trigger_retraining()`: `monitoring_flow._trigger_retraining_on_drift` 와 동일 패턴으로 rewrite. `(ImportError, PrefectException)` narrow catch, `record_trigger_failure("ct_on_accumulation", exc)` on both branches, `_run_async` wrapper 제거, `pydantic.ValidationError` 는 의도적으로 catch 하지 않음 (loud failure — missing `CT_*` env var 는 flow 를 터뜨려야 함). `_run_async` helper 와 `Coroutine` TYPE_CHECKING import 함께 제거 (유일한 caller 였음).
+  - [x] `tests/unit/test_data_accumulation_flow.py::TestTriggerRetrainingNarrowCatch` 신설 5개: PrefectException delta, ImportError (via `patch.dict(sys.modules, {"prefect.deployments": None})` trick — 실제 raised 예외는 subclass `ModuleNotFoundError`, error_class 라벨도 동일), ValueError propagates (pins deleted `_run_async` invariant), `pydantic.ValidationError` propagates (real ValidationError 를 invalid 모델로 생성 후 mock side_effect 주입), happy path exact call args (`name=<config default>`, `parameters={"trigger_source": "data_accumulated"}`, `timeout=0`, returns True).
+  - [x] `tests/unit/test_orchestration_counter.py` 신설 4개 테스트: `_KNOWN_TRIGGER_TYPES` 5-element taxonomy pin, PrefectException delta, arbitrary exception 클래스 라벨 (ValueError), caplog by new logger name `src.core.monitoring.orchestration_counter` at ERROR level.
+  - [x] `tests/unit/test_metrics_setup.py` 신설 2개 테스트: `setup_metrics` 가 `_KNOWN_TRIGGER_TYPES` 전부를 prime (assert `REGISTRY.get_sample_value(...) is not None`, absolute value 금지 — test-order 독립), `/metrics` 라우트 보존.
+  - [x] `.gitignore` 에 `quality-gates.local.md` + `prefect-*-layer3.png` 추가 (per user preference: state file 을 레포 루트에 두고 commit 에는 섞이지 않게).
+  - [ ] (follow-up) Phase E-3 Prefect notification block 실제 연동 — counter family 가 이제 scrapeable 하므로 다음 세션에 PromQL alert 정의 + notification block 설정 가능.
+
+- **Files changed**:
+  - 신규: `src/core/monitoring/orchestration_counter.py` 는 파일은 이미 존재했지만 모듈 surface 가 대폭 확장됨 (22 → 75 lines), `tests/unit/test_orchestration_counter.py`, `tests/unit/test_metrics_setup.py`
+  - 수정: `src/core/monitoring/metrics.py` (setup_metrics 안에 prime loop), `src/core/orchestration/flows/monitoring_flow.py` (helper 제거 + 3 call site lazy-import + `_run_async` 제거), `src/core/orchestration/flows/data_accumulation_flow.py` (trigger helper rewrite + `_run_async` 제거 + `Coroutine` TYPE_CHECKING 제거), `src/core/active_learning/labeling/webhook.py` (로컬 closure → shared helper), `tests/unit/test_data_accumulation_flow.py` (`TestTriggerRetrainingNarrowCatch` append), `.gitignore`
+
+- **설계 원칙**:
+  - **Fail loud, not silent**: `pydantic.ValidationError` 는 intentional 하게 narrow catch 에서 제외. `CT_*` env var 결손이면 flow 를 터뜨려야 운영자가 알 수 있다. `ValueError` 도 propagate — 과거 `_run_async` 래퍼가 숨겼던 regression 의 재발 방지.
+  - **Lazy-import discipline (§6-E2-runtime 계승)**: worker-side 호출부는 `record_trigger_failure` 를 모듈 top 이 아닌 try/except branch 내부에서 lazy-import. `orchestration_counter.py` 는 FastAPI 의존성 zero 유지 — 미래의 regression (e.g. 누군가 `orchestration_counter.py` 에 FastAPI-ish import 추가) 에도 worker 가 무해하게 계속 import 할 수 있게.
+  - **Multi-worker observability via per-worker post-fork prime**: `setup_metrics()` 가 FastAPI app factory 에서 실행되고 gunicorn 이 이를 각 worker 에서 fork 후 호출 → 각 worker 가 자기 mmap 파일에 zero 샘플을 쓰기 때문에 `MultiProcessCollector` 가 scrape 시점에 병합할 수 있다. Module-load time prime 은 preload_app 유무 / fork 타이밍에 의존하므로 피함.
+  - **Test-order independence**: 모든 counter 기반 assertion 을 delta 패턴 (`before = read(); act(); after = read(); assert after == before + 1`) 으로 작성. 전역 `prometheus_client.REGISTRY` 를 monkey-patch 하는 conftest fixture 신설하지 않음 — delta 패턴이면 불필요.
+  - **Taxonomy as single source of truth**: `_KNOWN_TRIGGER_TYPES` 가 (a) prime block 의 iteration target, (b) test pin, (c) module docstring 의 invariant 세 군데에서 참조되어 drift 가 즉시 test failure 로 표출된다.
+
+- **Verification**:
+  - Unit: `uv run pytest tests/unit -q` → **335 passed** (baseline 324 + 11 신규: 5 narrow-catch data_accumulation + 4 orchestration_counter + 2 setup_metrics). 첫 시도에서 `test_trigger_retraining_catches_import_error` 가 `ImportError` assertion 이었는데 실제는 `ModuleNotFoundError` (subclass) 로 뜸 — label 을 `ModuleNotFoundError` 로 정정 후 green.
+  - Lint: `uv run ruff check src/ tests/unit/test_data_accumulation_flow.py tests/unit/test_orchestration_counter.py tests/unit/test_metrics_setup.py` → all clean (Gate 2 에서 SIM117 nested-with 2건 + I001 import-order 1건 + TC002 type-checking import 1건 자동/수동 수정).
+  - Layer 2 regression scans: silent-concealer scan (3 files 에 executable `except Exception:` zero), dead `_run_async` scan (양쪽 flow 모두 executable reference zero, docstring history 만).
+  - Layer 3 runtime (docker compose up):
+    - `curl http://localhost:8000/metrics | grep -cE "^# (HELP|TYPE) orchestration_trigger_failure_total|^orchestration_trigger_failure_total"` → **exactly 7** (1 HELP + 1 TYPE + 5 zero-primed samples, labels `error_class="none"`).
+    - Happy path: `docker compose exec prefect-worker python -c "from src.core.orchestration.flows.data_accumulation_flow import _trigger_retraining; print(_trigger_retraining())"` → **True**. Prefect UI 와 API 가 `flying-jackal` (COMPLETED, `trigger_source=data_accumulated`) 및 `obedient-reindeer` (SCHEDULED → 이후 완료) 생성 확인.
+    - Narrow-catch path: `CT_DEPLOYMENT_NAME=does-not-exist/nope` 주입 + 단일 프로세스 delta 측정 → BEFORE=0.0 → AFTER=1.0 (delta +1), `returned: False`, traceback 끝에 `prefect.exceptions.ObjectNotFound: None` (PrefectException subclass — narrow catch 정확함).
+  - Quality gates (`/quality-pipeline`):
+    - Gate 1 (plan-verifier) **PASS** — 10/10 blocking items implemented, Layer 2 checks clean.
+    - Gate 2 (pr-reviewer iter 1) **PASS** — 0 critical/high, 1 style cleanup applied (test_orchestration_counter.py: `import pytest` → TYPE_CHECKING + typed `caplog: pytest.LogCaptureFixture`).
+    - Gate 3 (runtime-verifier) **PASS** — 4/4 runtime contracts verified against live docker compose stack, `flying-jackal` flow run **COMPLETED** lifecycle 확인 (SCHEDULED → RUNNING → COMPLETED 전체 chain 동작).
+
+- **Unblocked**:
+  - Phase E-3 Prefect notification block 연동: metric family 가 이제 api `/metrics` 에 scrapeable 하므로 PromQL alert rule 정의 + Prefect notification block 연결이 바로 개시 가능. 전제조건(§0 #4) 해제.
+  - Grafana alert rule on `orchestration_trigger_failure_total{error_class!="none"} > 0`: Grafana 의 Prometheus datasource explorer 가 이제 metric family 를 발견할 수 있어 rule 편집기에서 autocomplete 대상이 된다.
+  - `data_accumulation` → CT 자동 trigger 경로: 역사적으로 silent 하게 깨져 있던 것이 이제 live runtime 에서 실제로 Prefect flow run 을 생성하여 COMPLETED 까지 도달함을 확인.
+
+- **Remaining for parent phase**: → §4 Phase E Task Board 참조. 주요 잔여:
+  - Phase E-2: api 이미지 의존성 결손 (webhook → CT E2E 완주)
+  - Phase E-3: Prefect notification block 연동 + 4채널 alert firing E2E
+  - Phase E-4: Rate limiting & API auth (Gap 9)
+
+- **New follow-up tickets (carry-over to §0)**:
+  - **[`ContinuousTrainingConfig.deployment_name` 기본값 불일치]** `config.py` default `continuous-training/continuous-training-deployment` vs Phase E-1 등록 이름 `continuous-training-pipeline/continuous-training-deployment` — 본 세션 happy path 가 True 를 반환한 사실은 compose/env 가 이 default 를 override 하고 있을 가능성을 시사. 다음 세션 조사 대상. 우선순위: Medium.
+  - **[`CT_*` env vars in data-accumulation work pool]** work pool 이 `CT_*` 상속 여부 검증. `ValidationError` 가 터지면 loud failure 로 맞지만 production 운영 전 먼저 확인. 우선순위: Low.
+  - **[Prometheus multiproc prime 감사 CI smoke]** `curl /metrics | grep -c orchestration_trigger_failure_total >= 7` 을 CI 에 고정. 미래 gunicorn 설정 변경 (preload_app, post_fork hook) 이 prime path 를 무력화하지 않도록. 우선순위: Low.
+  - **[Worker ↔ api /metrics federation]** worker-side narrow-catch counter 증가분이 api `/metrics` 로 federate 되지 않음 (cross-process gap). 본 세션에서 Layer 3 runtime 으로 확인. Phase E-3 notification block 설계 단계에서 Pushgateway 경유 혹은 worker 측 /metrics 노출 중 하나로 해결. 우선순위: Medium.
 
 ---
 
