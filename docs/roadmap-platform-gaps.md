@@ -14,7 +14,7 @@
 
 - **Last updated**: 2026-04-11
 - **Current phase**: **Phase E — Event-Driven & Operational Hardening** (우선순위 1)
-- **Last commit on roadmap track**: (session pending — see final commits on branch `fix/phase-e2-al-flow-trigger-source`)
+- **Last commit on roadmap track**: `bd9cd13 docs(roadmap): E-2 runtime verification session log + resume pointer update` (branch `fix/phase-e2-al-flow-trigger-source`, 3-commit stack on top of main)
 - **Latest completed units**:
   - E-2 runtime E2E + silent concealer 4곳 제거 (branch `fix/phase-e2-al-flow-trigger-source`) → §6-E2-runtime
   - E-3 베이스라인 (`b8c7f8a`) → §6-E3
