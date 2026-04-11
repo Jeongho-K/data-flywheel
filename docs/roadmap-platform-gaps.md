@@ -1,7 +1,7 @@
 # Platform Gap Analysis & 구현 로드맵
 
 > **작성일**: 2026-04-10
-> **최종 업데이트**: 2026-04-12 (Phase E-2 worker metrics 완료: prefect-worker 가 자체 /metrics HTTP endpoint 를 9092 포트로 expose, Prometheus 가 4 worker-side trigger site 를 scrapeable — Grafana alerting 의 마지막 선행조건 해제)
+> **최종 업데이트**: 2026-04-12 (Phase E-3 alert rules 완료: orchestration_trigger_failure_total 에 대한 warning/critical 2개 rule 이 3개 Prometheus job 전체에서 firing — Gap 7 Alerting/Notification 이 Partial 에서 Operational 로 승격)
 > **목적**: 업계 표준 MLOps 플랫폼(ZenML, ClearML, MLRun, Lightly.ai, Google MLOps Level 2) 대비 data-flywheel 플랫폼의 격차를 식별하고, 다중 세션에 걸친 구현 로드맵을 제시한다.
 
 ---
@@ -14,14 +14,14 @@
 
 - **Last updated**: 2026-04-12
 - **Current phase**: **Phase E — Event-Driven & Operational Hardening** (우선순위 1)
-- **Last commit on roadmap track**: `2fffabd feat(orchestration): expose worker metrics HTTP endpoint for cross-process counter federation` (branch `fix/worker-metrics-http-exposure`, 1 code commit + 1 docs commit on top of main). PR merge 대기.
+- **Last commit on roadmap track**: `1829cc1 feat(alerting): Grafana rules for orchestration_trigger_failure_total across all trigger sites and jobs` (branch `fix/grafana-orchestration-alert-rules`, 1 code commit + 1 docs commit on top of main). PR merge 대기.
 - **Latest completed units**:
-  - E-2 worker metrics: prefect-worker 가 `/metrics` HTTP endpoint (:9092) 를 expose, Prometheus scrape job 추가, 16 series × 3 jobs 관측 가능 (`2fffabd`) → §6-E2-worker-metrics
+  - E-3 alert rules: Grafana warning/critical rules on `orchestration_trigger_failure_total`, 2개 rule MECE partition (`trigger_type!="rollback"` vs `trigger_type="rollback"`), live-fired `Orchestration Trigger Failure Warning` on `(ct_on_labeling, api)` (`1829cc1`) → §6-E3-alert-rules
+  - E-2 worker metrics: prefect-worker 가 `/metrics` HTTP endpoint (:9092) 를 expose (PR #31, `8d8c17c`) → §6-E2-worker-metrics
   - E-2 webhook deps: api 이미지에 `prefect`+`httpx` 추가 (PR #30, `fc9b6b7`) → §6-E2-webhook-deps
   - E-2 post-audit: data_accumulation narrow-catch + counter prime (PR #29, `75037fe`) → §6-E2-post-audit
-  - E-2 runtime E2E + silent concealer 4곳 제거 (PR #28) → §6-E2-runtime
-- **Next action (immediate)**: **Phase E-3 Grafana alert rules on all 5 trigger sites** — 이제 `orchestration_trigger_failure_total{error_class!="none"} > 0` 이 api, api-canary, prefect-worker 3개 Prometheus job 전체에서 queryable. `configs/grafana/alerting/alerts.yml` 에 5개 trigger_type 별 rule 추가 → 이미 구성된 4채널 (§6-E3) 으로 라우팅. Iteration 4 의 primary wedge.
-- **Secondary next**: Label Studio 프로젝트 시드 스크립트 + webhook happy-path E2E — iter 2 에서 narrow-catch 까지 도달 증명, 남은 건 `AL_LABEL_STUDIO_API_KEY` 설정 + `CT_MIN_ANNOTATION_COUNT=0` bypass 로 `run_deployment` 실제 발화 검증. Grafana alert rule 작업과 병렬로 진행 가능.
+- **Next action (immediate)**: **Label Studio 프로젝트 시드 스크립트 + webhook happy-path E2E** — iter 2 가 narrow-catch 까지 도달 증명, iter 4 가 narrow-catch 실패의 Grafana alerting 까지 증명. 남은 건 `AL_LABEL_STUDIO_API_KEY` 설정 + Label Studio 프로젝트 시드 (or `CT_MIN_ANNOTATION_COUNT=0` bypass) 로 `run_deployment` 실제 발화 → CT flow run 생성 체인 검증. Gap 1 webhook happy-path 를 완전 close 하고 Label Studio 가 자동 CT 트리거의 진정한 일등 소스가 된다. Iteration 5 primary wedge.
+- **Secondary next**: Alert 4채널 발화 E2E (실제 email / Slack / PagerDuty / Generic Webhook 수신 확인) — 본 iter 4 에서 Grafana rule firing 은 증명했지만 실제 외부 채널 delivery 는 operator-level secrets 가 필요. 선택적 후속. 또는 `/model/reload` 422 조사 (§0 #3 Medium).
 - **Known blocker**: (없음)
 
 ### Verify state before resuming
@@ -95,7 +95,7 @@ print('medium drift_score:', detect_drift(ref, curr)['drift_score'])  # 0.5 expe
 - [ ] **[`CT_*` env vars 작업 풀 inherit 검증]** `data-accumulation-pipeline` work pool 이 `CT_*` 환경 변수를 올바르게 상속하는지 확인하여 `ContinuousTrainingConfig()` 가 production 에서 `ValidationError` 로 쓰러지지 않도록 한다. 본 세션에서 narrow-catch 를 의도적으로 ValidationError 에 열지 않았기 때문에 (loud failure 원칙) 이 전제가 깨지면 data accumulation flow 전체가 터진다. **우선순위: Low** (docs/verification follow-up). 출처: 본 세션 §6-E2-post-audit 설계 결정.
 - [ ] **[Prometheus multiproc prime 감사]** 본 세션에서 `setup_metrics()` 안에 prime 블록을 넣었으며 gunicorn worker 가 fork 후 각자 mmap 파일을 터치해 5개 trigger_type 이 `/metrics` 에 모두 노출됨을 live 상태에서 확인. 이 가정이 깨지는 경로(예: 미래의 gunicorn `preload_app = True` 설정 변경 + `post_fork` 재-prime 미등록) 를 CI smoke 에 고정. `curl /metrics | grep -c orchestration_trigger_failure_total >= 7` 를 CI 에 추가. **우선순위: Low**. 출처: 본 세션 §6-E2-post-audit 설계 결정.
 - [ ] **[Alert 발화 E2E]** docker compose 환경에서 drift/error rate/latency 임계치를 인위적으로 하향 → Grafana 4채널(Email/Slack/Generic Webhook/PagerDuty) 동시 수신 확인. 출처: §6-E3, Gap 7.
-- [ ] **[Prefect notification block + Grafana alert rule]** Quality gate 실패(G1~G5) 및 narrow-catch counter 증가 → Grafana alert rule (+Prefect notification block) 연동. **모든 전제 조건 해제됨**: §0 #4 (counter prime, §6-E2-post-audit) 와 §0 #6 (Worker ↔ api federation, §6-E2-worker-metrics) 두 선행조건이 모두 본 Phase 에서 close 됨. 남은 작업은 `configs/grafana/alerting/alerts.yml` 에 `orchestration_trigger_failure_total{error_class!="none"} > 0` rule 을 5개 trigger_type 별로 추가 (or 단일 rule 에 label 매처 사용) + severity 라벨링 → 이미 구성된 4채널 (§6-E3) 로 라우팅. Iteration 4 의 primary wedge. 출처: Gap 7 잔여, §6-E3.
+- [ ] **[Alert firing 외부 채널 delivery E2E]** Grafana alert rule 과 routing 은 §6-E3-alert-rules 에서 완료 (iter 4 가 `Orchestration Trigger Failure Warning` 을 live-fire 시켜 Grafana Alertmanager API 에서 firing state 확인). 남은 것은 **실제 외부 채널 delivery 검증** — `GRAFANA_ALERT_EMAIL_ADDRESSES`, `GRAFANA_SLACK_WEBHOOK_URL`, `GRAFANA_GENERIC_WEBHOOK_URL`, `GRAFANA_PAGERDUTY_INTEGRATION_KEY` 를 실 secret 으로 세팅하고 4채널 모두 수신하는지 smoke test. Operator-level secret 구성이 필요하므로 개발 환경이 아닌 staging 에서 수행. **우선순위: Low** (Grafana 라우팅 자체는 이미 증명됨). 출처: §6-E3-alert-rules Gate 3 non-blocking finding.
 
 ---
 
@@ -259,7 +259,7 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 | Drift Detection | ✅ | ✅ (Evidently) | ✅ | N/A | ✅ | ✅ |
 | Feature Store | ❌ | ✅ (Feast) | ⚠️ | N/A | ✅ **Core** | ✅ (Vertex) |
 | Data Lineage | ⚠️ Partial | ✅ **Core** | ✅ | N/A | ✅ | ✅ |
-| Alerting/Notification | ⚠️ **Partial** (E-3 베이스라인 완료) | ✅ (Notifier) | ✅ | N/A | ✅ | ✅ |
+| Alerting/Notification | ✅ **Operational** (E-3 베이스라인 + 5개 trigger site × 3 job Grafana rule firing, §6-E3-alert-rules) | ✅ (Notifier) | ✅ | N/A | ✅ | ✅ |
 | Multi-Model Serving | ❌ | ✅ | ✅ | N/A | ✅ | ✅ |
 | Plugin/Domain Agnostic | ✅ Protocol | ⚠️ | ❌ | ❌ CV-only | ⚠️ | ✅ |
 
@@ -384,21 +384,24 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 
 ---
 
-### Gap 7: 알림(Alerting) 시스템 미구현 (Medium → Partial) 🟡
+### Gap 7: 알림(Alerting) 시스템 미구현 (Medium → Operational) 🟢
 
 **원래 현상**: Grafana alerting 설정 파일이 있지만, 실제 notification channel이 미설정. Quality gate 실패 시 로깅만 수행.
 
 **업계 기준**: ZenML Notifier, ClearML alerting, MLRun, Google L2 모두 다중 채널(email/Slack/PagerDuty) + severity 기반 라우팅을 기본 제공. 단일 채널 의존은 운영 시 단일 장애점(SPOF)이 된다.
 
 **필요 조치** (잔여):
-- [ ] Quality gate failure → Prefect notification block 연동 (후속)
-- [ ] Alert firing E2E 테스트 (docker compose 환경에서 임계치 인위 하향 → 4채널 발화 확인)
+- [ ] Alert firing **외부 채널 delivery** E2E 테스트 (실 secret 필요, staging 환경에서 수행)
 
-**현 상태**: **Partial** — Grafana 4채널 contact point + severity routing 베이스라인 완료. Prefect notification block 연동과 런타임 E2E 발화 검증은 대기.
+**현 상태**: **Operational** — (a) Grafana 4채널 contact point + severity routing 베이스라인 완료 (§6-E3), (b) counter observability 전체 prime + federation 완료 (§6-E2-post-audit + §6-E2-worker-metrics), (c) `orchestration_trigger_failure_total` 에 대한 warning/critical 2개 Grafana rule 이 3개 Prometheus job 전체에서 firing 증명 (§6-E3-alert-rules, iter 4 가 `Orchestration Trigger Failure Warning` 을 live-fire 하여 Alertmanager API 에서 확인). 남은 작업은 실 secret delivery smoke test 뿐.
 
-**남은 작업량**: 0.5~1 세션 (Prefect notification block + E2E 발화 검증)
+**남은 작업량**: 0.5 세션 (operator secret 구성 + 4채널 수신 확인 — 운영 환경 과제)
 
-**→ 진행 로그**: §6-E3 — Grafana 다중 채널 알림 베이스라인
+**→ 진행 로그**:
+- §6-E3 — Grafana 4채널 contact point + severity routing 베이스라인
+- §6-E2-post-audit — api-side counter prime (§0 #4 closed)
+- §6-E2-worker-metrics — prefect-worker /metrics HTTP exposure (§0 #6 closed)
+- §6-E3-alert-rules — 2 multi-dimensional Grafana rules + live firing verification
 
 ---
 
@@ -484,8 +487,8 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 - [x] ~~Compose 환경 변수 포워딩 (`GF_SMTP_*` + `GRAFANA_*` + `.env.example` alerting 블록)~~ → §6-E3
 - [x] ~~**`orchestration_trigger_failure_total` 관측 표면 활성화 (counter prime)** — `setup_metrics()` 안에서 fork 후 per-worker prime 하여 5개 trigger_type 이 api `/metrics` 에서 즉시 scrapeable~~ → §6-E2-post-audit (§0 #4 closed — Prefect notification block 의 선행조건 해제)
 - [x] ~~**Worker ↔ api `/metrics` federation — prefect-worker 가 `/metrics` HTTP endpoint (:9092) 를 자체 expose, Prometheus scrape job 추가**~~ → §6-E2-worker-metrics (§0 #6 closed — Prefect notification block 의 모든 선행조건 해제; 이제 4개 worker-side trigger site (`ct_on_drift`, `rollback`, `al_on_medium_drift`, `ct_on_accumulation`) 가 Grafana alert rule 의 대상으로 queryable)
-- [ ] Quality gate failure → Prefect notification block + Grafana alert rule 정의 (후속 — 모든 선행조건 해제됨, 다음 iteration primary wedge)
-- [ ] Alert firing E2E 테스트 (docker compose 환경에서 임계치 인위 하향 → 4채널 발화 확인)
+- [x] ~~**Grafana alert rules on `orchestration_trigger_failure_total` — 2 multi-dimensional rules (warning for non-rollback sites, critical for rollback) covering 5 trigger sites × 3 Prometheus jobs**~~ → §6-E3-alert-rules (iter 4 가 `Orchestration Trigger Failure Warning` 을 live-fire 해 Alertmanager API + Grafana UI 에서 확인; Gap 7 Alerting 이 Partial → Operational 로 승격)
+- [ ] Alert firing 외부 채널 delivery E2E (실 secret + staging 환경 필요; Grafana 내부 routing 은 이미 증명됨, 남은 건 operator-level 구성)
 
 #### E-4 Task Board
 
@@ -878,6 +881,61 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 - **Remaining for parent phase (E-3)**: → §4 Phase E-3 Task Board. 잔여는 (1) Grafana alert rule 정의 + (2) 실제 알림 발화 E2E 검증.
 
 - **New follow-up tickets (carry-over to §0)**: 없음 — 본 세션은 §0 #6 을 close 하고 새 ticket 은 만들지 않는다. Iteration 4 의 primary wedge 는 이미 기존 "Prefect notification block + Grafana alert rule" ticket 으로 carry-over 되어 있음.
+
+---
+
+### 6-E3-alert-rules · Grafana alert rules on orchestration_trigger_failure_total (2026-04-12)
+
+- **Commit**: `1829cc1 feat(alerting): Grafana rules for orchestration_trigger_failure_total across all trigger sites and jobs` (branch `fix/grafana-orchestration-alert-rules`). Docs commit appended afterwards.
+- **PR**: (pending — opened after §6 block commit per §0.5 C protocol)
+- **Gap**: Gap 7 (Alerting/Notification) — **Operational closure for orchestration narrow-catch path**
+- **Scope**: Append 2 new Grafana unified alerting rules to `configs/grafana/alerting/alerts.yml` covering all 5 orchestration trigger sites × 3 Prometheus jobs (api, api-canary, prefect-worker). Routes via the existing §6-E3 4-channel notification baseline. 2 files changed + 16 unit sanity tests.
+
+- **Problem (Phase E-3 베이스라인 이 실 동작하지 않았던 이유)**: §6-E3 이 2026-04-10 에 Grafana contact point 4채널 + severity routing 을 provisioning 으로 구성했지만, 정작 `orchestration_trigger_failure_total` 메트릭에 대한 alert rule 이 부재했다. 당시에는 metric family 자체가 prime 되지 않아 rule 정의가 불가능했고 (§0 #4 이 iter 1/§6-E2-post-audit 까지 block), worker-side counter 가 api `/metrics` 로 federate 되지 않아 rule 이 정의돼도 4개 worker-side trigger site 를 커버할 수 없었다 (§0 #6 이 iter 3/§6-E2-worker-metrics 까지 block). Iterations 1–3 이 두 선행조건을 모두 해제한 후 iteration 4 가 최종 rule 정의를 담는다.
+
+- **Changes** ([x] = 이번 블록에서 완료, [ ] = 후속):
+  - [x] `configs/grafana/alerting/alerts.yml`: 기존 `mlops-alerts` group (folder `MLOps`, interval `1m`) 에 2개 rule append.
+    - **Rule 4 `orchestration-trigger-failure-warning`** (severity: warning): `sum by (trigger_type, job) (increase(orchestration_trigger_failure_total{error_class!~"none|",trigger_type!="rollback"}[5m])) > 0`. Multi-dimensional aggregation 이므로 각 unique `(trigger_type, job)` cell 이 독립 alert instance 를 생성 → 각자 annotation templating + notification policy routing. `increase([5m])` 로 stale counter history (iter 2 의 LocalProtocolError residual value=2) 가 영구적으로 fire 하지 않도록 window 기반. `for: 1m` hold-down, `noDataState: OK`, `execErrState: Error`. 라우팅: default-multi 로 전송 (email + Slack + Generic Webhook 4-channel fan-out).
+    - **Rule 5 `orchestration-rollback-failure-critical`** (severity: critical): `sum by (job) (increase(orchestration_trigger_failure_total{trigger_type="rollback",error_class!~"none|"}[5m])) > 0`. Rollback failure 는 broken champion model 이 live 에 남는 high-blast-radius 사건이므로 별도 rule 로 critical 승격. 라우팅: `continue: true` 가 걸려 있어 critical-escalation (PagerDuty + dedicated Slack) + default-multi 양쪽 dual-path.
+    - MECE partition 증명: warning rule 은 `trigger_type!="rollback"`, critical rule 은 `trigger_type="rollback"` → 5개 trigger type 전부 정확히 1개 rule 에 매칭, 교집합/공집합 없음.
+  - [x] `tests/unit/test_grafana_alerts_yaml.py` 신규 작성 (172 lines, 16 tests): YAML provisioning regression guard. 클래스 3개 (`TestGrafanaAlertsProvisioning` — 파일 구조 pin, `TestOrchestrationTriggerFailureWarning` — warning rule 구조 pin, `TestOrchestrationRollbackFailureCritical` — critical rule 구조 pin). Asserts: `apiVersion==1`, single group `mlops-alerts`/folder `MLOps`/interval `1m`, exactly 5 rules, 5 expected uids, 각 새 rule 의 severity 라벨, `condition: "C"`, `noDataState: "OK"`, `for: "1m"` hold-down, refId `A` query 가 포함해야 할 substrings (`orchestration_trigger_failure_total`, `increase(`, `[5m]`, `error_class!~"none|"`, `trigger_type!="rollback"` or `trigger_type="rollback"`, multi-dimensional aggregation cardinality pins `sum by (trigger_type, job)` vs `sum by (job)`), refId `C` threshold stage 의 `datasourceUid: "__expr__"` + `type: threshold` + `gt`/`0` evaluator. Gate 2 pr-reviewer 가 제안한 sum-by cardinality pin + rollback nodata_state parity 2건도 추가 적용.
+  - [x] No other files modified — `contact-points.yml`, `notification-policies.yml` 는 변경 없이 reuse (이미 올바르게 세팅됨). No Python source changes. No Dockerfile changes.
+
+- **Files changed** (2 files, +294 lines):
+  - 수정: `configs/grafana/alerting/alerts.yml` (+108 lines: Rule 4 + Rule 5 append)
+  - 신규: `tests/unit/test_grafana_alerts_yaml.py` (+186 lines: 16 provisioning regression tests)
+
+- **설계 원칙**:
+  - **2 rules, not 5 (per trigger type) or 1 (everything)**: 5개 rule 은 maintenance × 5 without any signal gain — multi-dimensional alerting 이 이미 sum by 로 한 rule 당 다중 cell 처리. 1개 rule 은 rollback 의 critical 승격 분리가 불가능 (single severity per rule). 2 rules = severity bifurcation 의 자연스러운 분기점 + minimum maintenance surface.
+  - **`increase([5m]) > 0` over raw `> 0`**: raw 카운터 check 는 stale history 때문에 영구적으로 fire (iter 2 residual `LocalProtocolError=2` 가 평생 trip). `increase([window])` 는 window 내 신규 증가만 측정 → operator expectation 과 정합, auto-clear 가능. Downside: window 가 지나면 alert 도 auto-resolve (iter 4 Gate 3 runtime-verifier 가 이 lifecycle 을 독립 증명 — Normal → Pending → Firing → Normal).
+  - **Multi-dimensional `sum by (trigger_type, job)`**: Grafana 이 unique label set 당 1개 alert instance 를 생성 → routing, templating, deduplication 이 모두 자연스럽게 label-based 로 동작. 5개 trigger type × 3개 job = 이론적 최대 15 cell, 실제로는 동시 firing 이 드물어서 alert storm risk 없음.
+  - **Severity as the single routing key**: 기존 notification policy tree (§6-E3) 가 `severity` label 하나만으로 라우팅을 결정. 새 rule 이 이 관례를 그대로 따라 rollout 없이 existing 라우팅 인프라에 자연 통합.
+  - **Provisioning regression guard via unit test**: Grafana YAML provisioning 파일 breakage 는 Grafana 컨테이너가 (재)시작될 때만 검증됨 — 빠른 feedback loop 가 없다. `test_grafana_alerts_yaml.py` 가 file-level + rule-level invariant 를 static 하게 pin 하여 `uv run pytest` 가 Grafana 재시작보다 먼저 드리프트를 잡는다.
+
+- **Verification**:
+  - Unit: `uv run pytest tests/unit -q` → **353 passed** (iter 3 baseline 337 + 16 신규 YAML sanity tests).
+  - Lint: `uv run ruff check tests/unit/test_grafana_alerts_yaml.py` → clean.
+  - YAML parse sanity: `uv run python -c "import yaml; d=yaml.safe_load(open('configs/grafana/alerting/alerts.yml')); print(len(d['groups'][0]['rules']))"` → `5`.
+  - Layer 3 runtime (docker compose up -d grafana → provisioning reload → synthetic webhook POST → Grafana rule evaluation):
+    1. **Grafana 재시작 및 provisioning load**: Grafana 은 이번 세션에서 처음 start 됨 (이전에는 iter 1/2/3 단계에서 Grafana 은 필요 없었음). `docker compose up -d grafana` → healthcheck 1s 만에 통과 → provisioning 자동 load.
+    2. **Provisioning API 검증**: `curl -u admin:admin /api/v1/provisioning/alert-rules` → 5개 rule 전체 반환 (`api-error-rate-critical`, `api-latency-warning`, `drift-score-warning`, `orchestration-rollback-failure-critical` severity=critical, `orchestration-trigger-failure-warning` severity=warning). 두 신규 rule 모두 `for: 1m`.
+    3. **Synthetic counter increment**: `docker compose exec api python -c "webhook._last_trigger_time = 0.0"` 로 debounce 리셋 후 `curl -X POST /webhooks/label-studio` → 200 `{"status":"received"}` → counter `orchestration_trigger_failure_total{error_class="LocalProtocolError",trigger_type="ct_on_labeling"}` 2.0 → **3.0** (delta +1, iter 4 의 신규 증가분이 5m window 안으로 들어감).
+    4. **Grafana Alertmanager API firing 확인**: `curl -u admin:admin /api/alertmanager/grafana/api/v2/alerts | json.loads(..., strict=False)` → 1 active alert, `alertname="Orchestration Trigger Failure Warning"`, `state=active`, `severity=warning`, `trigger_type=ct_on_labeling`, `job=api`, `startsAt=2026-04-11T17:50:20Z`. Label 4개 모두 plan 예측과 정확히 일치 — rule evaluation, 라우팅 label extraction, multi-dimensional cardinality 모두 end-to-end 동작 증명.
+    5. **Playwright (headed Chrome per memory)**: Grafana UI `/alerting/groups` 에 navigate, admin/admin 로그인 후 "Active notifications" 페이지에서 firing alert 가시적으로 확인. Screenshot `grafana-alerting-iter4-active-notifications.png`. (`/alerting/list` 페이지는 Grafana 12.4.1 의 query-string 라우팅 버그로 500 표시 — rule 문제 아닌 Grafana UI quirk, §0 non-blocker 로 flag.)
+  - Quality gates (`/quality-pipeline`):
+    - Gate 1 (plan-verifier) **PASS** — 3/3 blocking items 구현 (alerts.yml diff, test file, no-other-files), runtime evidence 전체 수집 확인.
+    - Gate 2 (pr-reviewer iter 1) **PASS** — 0 critical/high. 8개 focus area 전체 clean (PromQL correctness, multi-dimensional semantics, filter correctness, MECE rollback split, hold-down rationale, annotation templating, test coverage, schema conformance). 3 non-blocking suggestions — 2건 apply (sum-by cardinality pin + nodata_state parity), 1건 cosmetic decline.
+    - Gate 3 (runtime-verifier) **PASS** — 모든 structural contract 독립 재검증. "point-in-time `increase([5m]) > 0`" 는 verifier 실행 시점에 이미 5m window 가 지나 resolve 된 상태였지만, **Grafana rules API** (`/api/prometheus/grafana/api/v1/rules`) 의 `state=Normal activeAt=2026-04-11T17:54:20Z health=ok` 가 독립 증거로 lifecycle 전체 (Normal → Pending → Firing → Normal) 를 입증. `increase([15m]) > 1` 가 base counter pipeline 의 건강함을 확인.
+
+- **Unblocked**:
+  - **Gap 7 (Alerting/Notification) Operational closure**: Partial → ✅ Operational. §2 업계 벤치마킹 비교 테이블에서 ⚠️ Partial 표식을 ✅ Operational (+ `§6-E3-alert-rules` 참조) 로 승격.
+  - **Production alerting 감시망 완성**: 이제 prod 환경에서 narrow-catch 가 fire 하면 2분 내 (1m Prometheus scrape + 1m rule eval + 1m hold-down) operator 가 email/Slack/Generic Webhook 에서 신호를 받는다. Rollback 실패 시에는 추가로 PagerDuty escalation. 선행 3 iteration 의 compound engineering (counter taxonomy + prime architecture + narrow-catch family + worker federation) 이 이 iteration 에서 operationally realized.
+  - **Prefect notification block 대안성**: 애초 계획은 "Grafana alerts OR Prefect notification block" 이었으나 Grafana side 가 완성됨에 따라 Prefect notification block 은 deferred. Grafana 가 이미 모든 trigger site 를 커버하므로 중복 integration 이 operational cost 를 높이기만 함.
+
+- **Remaining for parent phase (E-3)**: → §4 Phase E-3 Task Board. 잔여는 **외부 채널 delivery E2E** 1개 — operator-level secret (실 SMTP / 실 Slack webhook / 실 PagerDuty integration key) 을 staging 환경에서 주입 후 4채널 모두 수신하는지 smoke. Code change 없음, 운영 환경 과제.
+
+- **New follow-up tickets (carry-over to §0)**:
+  - **[Alert firing 외부 채널 delivery E2E]** (Low priority) — Grafana 내부 routing 은 이미 증명됨, 남은 건 실 secret + staging 구성. Gate 3 runtime-verifier non-blocking finding. 코드 변경 없이 closable.
 
 ---
 
