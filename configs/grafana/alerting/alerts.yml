@@ -122,3 +122,111 @@ groups:
           description: "The inference API p99 latency is high. Consider scaling workers or optimizing the model."
         labels:
           severity: warning
+
+      # Alert 4: Orchestration narrow-catch trigger failures (non-rollback).
+      # Multi-dimensional rule: sum by (trigger_type, job) creates one alert
+      # instance per unique (trigger_type, job) cell that trips the threshold.
+      # Excludes rollback because it has its own critical-severity rule below.
+      # Uses increase([5m]) so stale counter history doesn't perpetually fire;
+      # only NEW narrow-caught failures within the last 5 minutes move the
+      # rule from Normal -> Pending -> Firing.
+      # Fires across api, api-canary, and prefect-worker Prometheus jobs.
+      - uid: orchestration-trigger-failure-warning
+        title: "Orchestration Trigger Failure Warning"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (trigger_type, job) (
+                  increase(orchestration_trigger_failure_total{error_class!~"none|",trigger_type!="rollback"}[5m])
+                )
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "Narrow-caught orchestration trigger failure: trigger_type={{ $labels.trigger_type }} job={{ $labels.job }}"
+          description: |
+            A worker- or api-side trigger helper narrow-caught an expected
+            infra failure via record_trigger_failure. Check the
+            orchestration_counter ERROR logs in the container hosting the
+            trigger site (api for ct_on_labeling; prefect-worker for
+            ct_on_drift / al_on_medium_drift / ct_on_accumulation). The
+            error_class label on the underlying counter series identifies
+            the narrow-catch class. Refer to §6-E2-runtime / §6-E2-post-audit
+            / §6-E2-worker-metrics for the narrow-catch architecture.
+        labels:
+          severity: warning
+
+      # Alert 5: MLflow rollback path failure — CRITICAL.
+      # Separated from the warning rule because rollback failure leaves a
+      # broken champion model live in production (high blast radius). Routes
+      # via severity=critical -> critical-escalation (PagerDuty + dedicated
+      # Slack) AND continues to the default fan-out per the notification
+      # policy tree in notification-policies.yml.
+      - uid: orchestration-rollback-failure-critical
+        title: "Orchestration Rollback Failure CRITICAL"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: |
+                sum by (job) (
+                  increase(orchestration_trigger_failure_total{trigger_type="rollback",error_class!~"none|"}[5m])
+                )
+              instant: true
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+              refId: C
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: "MLflow rollback path FAILED — champion model may be broken (job={{ $labels.job }})"
+          description: |
+            The monitoring flow's _trigger_rollback() narrow-caught an
+            exception after reassigning the MLflow champion alias. This
+            typically leaves a broken champion active in serving.
+            Investigate immediately: (1) check MLflow alias state for the
+            registered model, (2) verify the serving /model/reload endpoint
+            is reachable, (3) check the orchestration_counter ERROR logs in
+            the prefect-worker container for the specific httpx.HTTPError
+            or mlflow.MlflowException error_class.
+        labels:
+          severity: critical
