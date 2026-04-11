@@ -54,10 +54,12 @@ print('medium drift_score:', detect_drift(ref, curr)['drift_score'])  # 0.5 expe
 
 ### Open follow-up tickets (carried over across sessions)
 
-- [ ] **[api 이미지 의존성 결손]** `docker/serving/Dockerfile` 에 `prefect` + `httpx` 추가. 현재 webhook 핸들러가 `ImportError` 로 silent no-op (narrow-catch 가 노출). Label Studio project 시드 + API key 세팅 후 webhook → CT E2E 완주. 출처: §6-E2-runtime.
+- [ ] **[api 이미지 의존성 결손]** `docker/serving/Dockerfile` 에 `prefect` + `httpx` 추가. 현재 webhook 핸들러가 `ImportError` 로 silent no-op (narrow-catch 가 노출). Label Studio project 시드 + API key 세팅 후 webhook → CT E2E 완주. 출처: §6-E2-runtime. **우선순위: High** (Gate 2/3 quality gates 에서도 재확인됨 — webhook 경로가 역사적으로 한 번도 발화한 적 없음).
 - [ ] **[serving `/model/reload` 422]** `_trigger_rollback()` 의 MLflow alias 이동은 성공하지만 serving 컨테이너 `/model/reload` 엔드포인트가 422 Unprocessable Entity 를 반환해 새 champion 이 실전 반영되지 않음. payload schema 확인 필요. 출처: §6-E2-runtime.
+- [ ] **[`_run_async` 잔존자 감사]** `src/core/orchestration/flows/data_accumulation_flow.py` 에 아직 `_run_async(run_deployment(...))` 패턴이 남아 있을 가능성. 이는 E-2 runtime 에서 발견된 pre-existing ValueError(`asyncio.run(FlowRun)`) 버그와 동일한 형태이며, `data_accumulation_flow` 내부 catch 가 아직 bare `except Exception` 인지도 함께 감사. 출처: Gate 2 pr-reviewer finding (quality-gates pipeline run 2026-04-11). **우선순위: Medium** — data accumulation 경로도 silent 하게 깨져 있을 가능성.
+- [ ] **[`orchestration_trigger_failure_total` 관측 표면 활성화]** `prometheus_client` 의 labeled counter 는 `.labels(...).inc()` 가 최소 1회 호출되기 전까지 `/metrics` 에 metric family 자체가 나타나지 않는다. 현재 api 컨테이너는 narrow-catch 경로를 밟기 전에 `ImportError` 로 먼저 탈출하므로 counter bump 라인에 도달한 적이 없음 → `curl /metrics | grep orchestration_trigger` 결과가 공란. wiring 자체는 정확하며 첫 실제 실패 시 즉시 노출됨. **조치 옵션**: (a) api 이미지 deps 수정(위 첫 항목) 후 자연 해소, (b) `metrics.py` 에서 모듈 로드 시 `0` 샘플을 한 번 prime 해두기 (`counter.labels(trigger_type="bootstrap", error_class="none").inc(0)`). Prefect notification block 연동 전에 반드시 먼저 해결. 출처: Gate 3 runtime-verifier finding (quality-gates pipeline run 2026-04-11).
 - [ ] **[Alert 발화 E2E]** docker compose 환경에서 drift/error rate/latency 임계치를 인위적으로 하향 → Grafana 4채널(Email/Slack/Generic Webhook/PagerDuty) 동시 수신 확인. 출처: §6-E3, Gap 7.
-- [ ] **[Prefect notification block]** Quality gate 실패(G1~G5) → Prefect notification block 연동. 이제 `orchestration_trigger_failure_total{trigger_type,error_class}` counter 가 있어 PromQL → notification block 경로가 가능. 출처: Gap 7 잔여, §6-E3.
+- [ ] **[Prefect notification block]** Quality gate 실패(G1~G5) → Prefect notification block 연동. 이제 `orchestration_trigger_failure_total{trigger_type,error_class}` counter 가 있어 PromQL → notification block 경로가 가능. **전제 조건**: 위 "관측 표면 활성화" 티켓 해결 (counter 가 실제로 `/metrics` 에 노출되는 상태여야 PromQL alert 가 발화할 수 있음). 출처: Gap 7 잔여, §6-E3.
 
 ---
 
