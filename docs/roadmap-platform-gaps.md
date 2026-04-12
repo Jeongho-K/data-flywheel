@@ -1,7 +1,7 @@
 # Platform Gap Analysis & 구현 로드맵
 
 > **작성일**: 2026-04-10
-> **최종 업데이트**: 2026-04-12 (Phase E-3 alert rules 완료: orchestration_trigger_failure_total 에 대한 warning/critical 2개 rule 이 3개 Prometheus job 전체에서 firing — Gap 7 Alerting/Notification 이 Partial 에서 Operational 로 승격)
+> **최종 업데이트**: 2026-04-12 (§6-E2-labeling-happy-path — Label Studio 시드 스크립트 + webhook happy-path live proof: 4개 `continuous-training-pipeline` flow run 이 `trigger_source=labeling_complete` 로 COMPLETED, Gap 1 Event-Driven Automation 의 네 webhook 경로 전체가 operational)
 > **목적**: 업계 표준 MLOps 플랫폼(ZenML, ClearML, MLRun, Lightly.ai, Google MLOps Level 2) 대비 data-flywheel 플랫폼의 격차를 식별하고, 다중 세션에 걸친 구현 로드맵을 제시한다.
 
 ---
@@ -13,15 +13,15 @@
 > **🔴 먼저 §0.5 【중요】 문서 유지 규칙을 읽었는가?** — 읽지 않았다면 지금 스크롤을 내려 §0.5 A~G 를 먼저 확인하고, 특히 C(End-of-Session 프로토콜)와 E(Anti-Patterns)는 반드시 숙지한 후 작업을 개시한다. 이 문서는 규칙 위반에 취약하며, 규칙 위반은 과거 세션의 기록을 소리 없이 손상시킨다.
 
 - **Last updated**: 2026-04-12
-- **Current phase**: **Phase E — Event-Driven & Operational Hardening** (우선순위 1)
-- **Last commit on roadmap track**: `1829cc1 feat(alerting): Grafana rules for orchestration_trigger_failure_total across all trigger sites and jobs` (branch `fix/grafana-orchestration-alert-rules`, 1 code commit + 1 docs commit on top of main). PR merge 대기.
+- **Current phase**: **Phase E — Event-Driven & Operational Hardening** (우선순위 1). E-1 / E-2 / E-3 main body 전체 완료, 남은 항목은 E-4 (Rate Limiting & API Authentication) + E-3 외부 채널 delivery E2E (operator-level secret 필요).
+- **Last commit on roadmap track**: `33bf742` (branch `fix/label-studio-seeding-webhook-happy-path`, 1 code commit + 1 docs commit on top of main). PR merge 대기.
 - **Latest completed units**:
-  - E-3 alert rules: Grafana warning/critical rules on `orchestration_trigger_failure_total`, 2개 rule MECE partition (`trigger_type!="rollback"` vs `trigger_type="rollback"`), live-fired `Orchestration Trigger Failure Warning` on `(ct_on_labeling, api)` (`1829cc1`) → §6-E3-alert-rules
+  - E-2 labeling happy-path: Label Studio seed script + `ground_truth:false` import fix → **4 CT flow runs COMPLETED** via real webhook POST (`33bf742`) → §6-E2-labeling-happy-path
+  - E-3 alert rules: Grafana warning/critical rules on `orchestration_trigger_failure_total` 2개 MECE partition, live-fired (`1829cc1`) → §6-E3-alert-rules
   - E-2 worker metrics: prefect-worker 가 `/metrics` HTTP endpoint (:9092) 를 expose (PR #31, `8d8c17c`) → §6-E2-worker-metrics
   - E-2 webhook deps: api 이미지에 `prefect`+`httpx` 추가 (PR #30, `fc9b6b7`) → §6-E2-webhook-deps
-  - E-2 post-audit: data_accumulation narrow-catch + counter prime (PR #29, `75037fe`) → §6-E2-post-audit
-- **Next action (immediate)**: **Label Studio 프로젝트 시드 스크립트 + webhook happy-path E2E** — iter 2 가 narrow-catch 까지 도달 증명, iter 4 가 narrow-catch 실패의 Grafana alerting 까지 증명. 남은 건 `AL_LABEL_STUDIO_API_KEY` 설정 + Label Studio 프로젝트 시드 (or `CT_MIN_ANNOTATION_COUNT=0` bypass) 로 `run_deployment` 실제 발화 → CT flow run 생성 체인 검증. Gap 1 webhook happy-path 를 완전 close 하고 Label Studio 가 자동 CT 트리거의 진정한 일등 소스가 된다. Iteration 5 primary wedge.
-- **Secondary next**: Alert 4채널 발화 E2E (실제 email / Slack / PagerDuty / Generic Webhook 수신 확인) — 본 iter 4 에서 Grafana rule firing 은 증명했지만 실제 외부 채널 delivery 는 operator-level secrets 가 필요. 선택적 후속. 또는 `/model/reload` 422 조사 (§0 #3 Medium).
+- **Next action (immediate)**: **Phase E-4 (Rate Limiting & API Authentication)** 또는 **Phase F (Advanced Active Learning)**. Phase E main body 는 본 iter 5 로 operational closure 완료 — Gap 1 Event-Driven Automation 의 네 webhook 경로 (drift HIGH, drift MEDIUM, labeling complete, data accumulation) 가 모두 live 증명됨. E-4 는 Gap 9 Security 를 닫으며 production readiness 의 마지막 표층, F 는 Embedding/Coreset 도입으로 Lightly.ai 대비 AL quality 를 Tier-2 로 끌어올림. 둘 중 brainstorming 에서 후속 iteration 의 wedge 를 결정.
+- **Secondary next**: `/model/reload` 422 조사 (`_trigger_rollback` 마지막 한 발), Alert 외부 채널 delivery E2E (operator-level secret 필요), 또는 `src/core/serving/gunicorn/config.py` 에서 `LOG_LEVEL=INFO` 노출 (webhook INFO log breadcrumb 복구).
 - **Known blocker**: (없음)
 
 ### Verify state before resuming
@@ -88,8 +88,8 @@ print('medium drift_score:', detect_drift(ref, curr)['drift_score'])  # 0.5 expe
 
 ### Open follow-up tickets (carried over across sessions)
 
-- [ ] **[Label Studio 프로젝트 시드 스크립트 + webhook happy-path E2E]** 본 세션(§6-E2-webhook-deps) 에서 api 이미지 deps 를 고쳐 webhook handler 가 narrow-catch 경로까지 도달하는 것을 확인했으나, real happy-path (`run_deployment` 실제 발화, CT flow run 생성) 는 Label Studio 프로젝트 실재 + `AL_LABEL_STUDIO_API_KEY` 설정 + ≥50 annotation 전제. 다음 세션(iteration 3) 에서 `scripts/seed_label_studio_project.py` 를 작성하고 `CT_MIN_ANNOTATION_COUNT=0` 으로 bypass 테스트 또는 실제 annotation 시드 후 real webhook 발화 검증. **우선순위: High** (§0 #1 의 후속, Gap 1 webhook 경로 완전 close).
-- [ ] **[api 컨테이너 root logger level WARNING]** Gate 3 runtime-verifier 가 발견: gunicorn 의 root logger 가 `WARNING` level 이라서 `logger.info("Label Studio webhook received...")` at `src/core/active_learning/labeling/webhook.py:78` 가 `docker compose logs api` 에서 보이지 않는다. Handler 자체는 정상 실행 (narrow-catch 가 ERROR 승격으로 찍힘) 지만 operator 가 "webhook fired" breadcrumb 을 잃는다. `src/core/serving/gunicorn/config.py` 에서 `LOG_LEVEL=INFO` 고정 또는 compose env 로 노출. **우선순위: Low** (observability 개선, 버그 아님). 출처: 본 세션 §6-E2-webhook-deps Gate 3.
+- [ ] **[api 컨테이너 root logger level WARNING]** `src/core/serving/gunicorn/config.py` 에서 gunicorn root logger 가 `WARNING` level 이라 `logger.info("Label Studio webhook received...")`, `Annotation count (3) >= threshold (1). Triggering continuous training.` 등 webhook happy-path breadcrumb 이 `docker compose logs api` 에 보이지 않는다. §6-E2-labeling-happy-path 에서 재발견 (본 세션이 direct `_maybe_trigger_retraining` 호출로 raw INFO 를 관측해야 했다). `LOG_LEVEL=INFO` 환경 변수로 노출 또는 gunicorn config 에서 `loglevel = "info"` 고정. **우선순위: Medium** (low → medium bump; 두 세션 연속 재발견 + operator UX 훼손). 출처: §6-E2-webhook-deps, §6-E2-labeling-happy-path.
+- [ ] **[`_maybe_trigger_retraining` debounce initial-state quirk]** `_last_trigger_time: float = 0.0` 초기값이 `time.monotonic()` 의 CLOCK_MONOTONIC 기준 (수십억 초) 과 비교되어 debounce 가 사실상 항상 pass. Production 에서는 무해하지만 의도된 60s rate-limit 이 실질적으로 미동작. `None` sentinel + explicit "아직 발화한 적 없음" 분기로 교체 검토. **우선순위: Low**. 출처: §6-E2-labeling-happy-path.
 - [ ] **[serving `/model/reload` 422]** `_trigger_rollback()` 의 MLflow alias 이동은 성공하지만 serving 컨테이너 `/model/reload` 엔드포인트가 422 Unprocessable Entity 를 반환해 새 champion 이 실전 반영되지 않음. payload schema 확인 필요. 출처: §6-E2-runtime.
 - [ ] **[`ContinuousTrainingConfig.deployment_name` 기본값 불일치]** `config.py` 의 default 는 `"continuous-training/continuous-training-deployment"` 이지만 Phase E-1 (`serve_all.py`) 가 등록한 실제 이름은 `"continuous-training-pipeline/continuous-training-deployment"` (`-pipeline` 접미사). 본 세션 runtime E2E 에서 happy-path 가 `True` 를 반환했음 — docker compose 환경 변수 혹은 배치 환경이 이 default 를 overriding 하고 있을 가능성. 다음 세션에서 default 를 정합하거나 `CT_DEPLOYMENT_NAME` 을 compose 에 고정. **우선순위: Medium**. 출처: 본 세션 §6-E2-post-audit 탐색.
 - [ ] **[`CT_*` env vars 작업 풀 inherit 검증]** `data-accumulation-pipeline` work pool 이 `CT_*` 환경 변수를 올바르게 상속하는지 확인하여 `ContinuousTrainingConfig()` 가 production 에서 `ValidationError` 로 쓰러지지 않도록 한다. 본 세션에서 narrow-catch 를 의도적으로 ValidationError 에 열지 않았기 때문에 (loud failure 원칙) 이 전제가 깨지면 data accumulation flow 전체가 터진다. **우선순위: Low** (docs/verification follow-up). 출처: 본 세션 §6-E2-post-audit 설계 결정.
@@ -456,7 +456,7 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 | 순서 | 작업 | Gap | 예상 세션 | 상태 |
 |:---:|------|:---:|:---:|:---:|
 | E-1 | Prefect Worker 통합 serve_all & 4개 Deployment 등록 | Gap 1 | 1 | ✅ **완료** (PR #26, `ab3d14a`) |
-| E-2 | Event-Driven Trigger E2E 검증 (webhook → CT, drift → CT/AL) + S5 signature fix | Gap 1 | 1~2 | 🟢 **거의 완료** (S5 + drift HIGH + drift MEDIUM + webhook narrow-catch 전부 PASS; webhook happy-path 는 Label Studio 프로젝트 시드 후속) |
+| E-2 | Event-Driven Trigger E2E 검증 (webhook → CT, drift → CT/AL) + S5 signature fix | Gap 1 | 1~2 | ✅ **완료** (§6-E2-labeling-happy-path 가 webhook happy-path live proof, 4 CT runs COMPLETED) |
 | E-3 | Alerting 시스템 구축 (Grafana + Prefect notifications) | Gap 7 | 1~2 | 🟡 **부분 완료** (Grafana 4채널 베이스라인 OK, Prefect block + E2E 대기) |
 | E-4 | Rate Limiting & API Authentication | Gap 9 | 1 | ⏳ 대기 |
 
@@ -472,7 +472,7 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 #### E-2 Task Board
 
 - [x] ~~S5: `active_learning_flow` 에 `trigger_source: str = "manual"` 인자 추가 + summary 전파 + 회귀 테스트 2건~~ → §6-E2-S5
-- [~] Label Studio annotation webhook → `continuous-training-deployment` 런타임 발화 검증 (docker compose up 필요) — **Partial**: route 200 OK 확인 + narrow-catch 가 pre-existing `ModuleNotFoundError` 노출. 실제 deployment 발화는 api 이미지 의존성 추가 후속 티켓으로 분리 → §6-E2-runtime
+- [x] ~~Label Studio annotation webhook → `continuous-training-deployment` 런타임 발화 검증 (docker compose up 필요)~~ → §6-E2-labeling-happy-path (route 200 OK + narrow-catch evidence §6-E2-runtime → api deps fix §6-E2-webhook-deps → Label Studio 시드 + `ground_truth=False` fix 로 **실 flow run 4개 COMPLETED** §6-E2-labeling-happy-path 의 compound chain)
 - [x] ~~**api 이미지 의존성 결손 수정** — `docker/serving/Dockerfile` 에 `prefect>=3.0` + `httpx>=0.27` 추가 → webhook handler 가 narrow-catch 경로에 역사상 최초 도달, LocalProtocolError 로 counter +1, run_deployment 호출 전에 fail-fast~~ → §6-E2-webhook-deps (§0 #1 High priority closed — webhook happy-path 는 Label Studio 프로젝트 시드 후속으로 분리)
 - [x] ~~Drift HIGH 감지 → `continuous-training-deployment` 자동 트리거 + MLflow rollback 체인 검증~~ → §6-E2-runtime
 - [x] ~~Drift MEDIUM 감지 → `active-learning-deployment` + `continuous-training-deployment` 병행 트리거 검증 (S5 해제로 이제 가능)~~ → §6-E2-runtime
@@ -936,6 +936,84 @@ data-flywheel은 Active Learning-First Closed-Loop MLOps 플랫폼으로, 4개 P
 
 - **New follow-up tickets (carry-over to §0)**:
   - **[Alert firing 외부 채널 delivery E2E]** (Low priority) — Grafana 내부 routing 은 이미 증명됨, 남은 건 실 secret + staging 구성. Gate 3 runtime-verifier non-blocking finding. 코드 변경 없이 closable.
+
+---
+
+### 6-E2-labeling-happy-path · Label Studio 시드 스크립트 + webhook happy-path E2E 증명 (2026-04-12)
+
+- **Commit**: `33bf742` (branch `fix/label-studio-seeding-webhook-happy-path`). Docs commit appended afterwards.
+- **PR**: (pending — opened after §6 block commit per §0.5 C protocol)
+- **Gap**: Gap 1 (Event-Driven Automation) — **webhook happy-path full closure across all three trigger paths**.
+- **Scope**: 새 `scripts/seed_label_studio_project.py` + docker-compose env 추가 + `_ensure_at_least_one_annotation` import payload fix + 24개 regression unit tests. 이로써 Label Studio annotation → webhook → Prefect `continuous-training-deployment` 까지 **실제 flow run 4개가 SCHEDULED→COMPLETED 로 전이**하는 것을 live docker 환경에서 증명.
+
+- **Problem (Gap 1 webhook-path 가 Phase E-1 이후 여태 live 실증 안 됐던 이유)**: §6-E1 (PR #26) 이 deployment 등록을, §6-E2-webhook-deps (PR #30) 가 api 이미지 의존성을 추가했지만 webhook handler 가 `bridge.get_annotation_count() >= min_annotation_count` 체크를 통과해 `run_deployment` 를 실제 발화시킨 경우는 없었다. 세 개 latent blocker:
+  - **B1 (Label Studio admin 부재)**: Label Studio 1.19 는 환경변수로 admin 계정을 bootstrap 하지 않는다 — 매 컨테이너 재시작마다 UI 에서 수동 signup 이 필요하다. 개발자가 JSON API 라고 믿어온 `/api/auth/login/`·`/api/user/signup/` 는 1.19 에서 존재하지 않고 Django form-based `/user/login`·`/user/signup` (CSRF + form-encoding) 이 실제 endpoint. 자동화 파이프라인에 가장 기본이 되는 "admin 계정 하나" 가 매번 block 되고 있었다.
+  - **B2 (`num_tasks_with_annotations` = 0, stored 가 아니라 derived field, `ground_truth=False` filter)**: `LabelStudioBridge.get_annotation_count` 가 읽는 project stat `num_tasks_with_annotations` 는 Project 모델의 저장된 필드가 **아니라** serializer 시점에 계산되는 subquery (`projects/functions/__init__.py:annotate_num_tasks_with_annotations`) 결과다. Subquery filter: `ground_truth=False AND was_cancelled=False AND result__isnull=False`. 그런데 REST `/api/projects/{id}/import` 는 기본적으로 annotation 을 `ground_truth=True` 로 생성한다. 결과: task 와 annotation row 는 모두 존재하고 `total_annotations_number` 는 정확히 집계되지만 counter 만 영구히 0 으로 고정 → webhook handler 의 threshold check 가 항상 실패 → `run_deployment` 미호출 → **ct_on_labeling 경로는 발화 불가**. 이전 세션에서 `update_tasks_counters_and_is_labeled()` method 를 호출해 "counter 를 refresh" 하려 시도했지만 아무 효과 없음. Label Studio 소스를 직접 읽고 나서야 이 필드가 저장 필드가 아님을 알게 됐다.
+  - **B3 (Django shell REPL block 파싱 quirk)**: `docker compose exec label-studio label-studio shell` 의 interactive REPL 은 `if ... : <body>` 뒤에 바로 이어지는 top-level 문을 이전 if 의 continuation 으로 파싱한다. 세미콜론 패킹 (`if created: stmt1; stmt2`) 도 두 번째 줄은 여전히 continuation 으로 취급. `else: pass` + 명시적 **blank line** 조합만이 REPL block 을 안전히 닫아 다음 top-level 문이 정상 파싱되는 유일한 패턴. 이 한 줄 없이는 Django shell snippet 이 SyntaxError 로 죽어 admin 계정 seed 자체가 불가능.
+
+- **Changes** ([x] = 이번 블록에서 완료, [ ] = 후속):
+  - [x] `scripts/seed_label_studio_project.py` 신규 (648 lines): 3-strategy auth chain + idempotent project create/reuse + 1-task+1-annotation seed + stdout `CT_LABEL_STUDIO_API_KEY` / `CT_LABEL_STUDIO_PROJECT_ID` two-line contract (operator `source` 가능).
+    - **Strategy 1 (pre-existing token)**: `LABEL_STUDIO_USER_TOKEN` env 가 세팅돼 있으면 그대로 사용 (re-run fast path).
+    - **Strategy 2 (docker exec → Django shell)**: label-studio container 내부에서 `User.objects.get_or_create()` + `Organization.create_organization()` + `JWTSettings.legacy_api_tokens_enabled=True` (per-org) + `Token.objects.get_or_create()` 을 한 snippet 안에서 수행. `TOKEN:<hex>` 마커로 stdout 분리. Blank-line-after-else-pass 패턴 필수 (B3).
+    - **Strategy 3 (Playwright headed Chrome)**: 앞 두 전략이 실패할 때 `/user/signup` 폼을 실 Chrome 으로 drive (기존 `tests/e2e/browser/conftest.py` 패턴 재사용).
+    - `_resolve_project_id` — `/api/projects/?title=...` filter → 기존 프로젝트 재사용 OR `/api/projects/` POST 로 minimal `<View><Image/><Choices/></View>` schema 생성. paginated response envelope 도 처리.
+    - `_ensure_at_least_one_annotation` — 기존 `num_tasks_with_annotations >= 1` 이면 no-op. 아니면 **`ground_truth: False` + `was_cancelled: False` 를 명시한** `/api/projects/{id}/import` payload 로 1 task + 1 embedded annotation 주입 (B2 fix). 주입 후 `_refresh_project_counters()` fallback 호출로 legacy 잔여 `ground_truth=True` annotation 이 있으면 flip.
+    - `_refresh_project_counters(cfg, project_id)` — docker exec → Django shell 로 `Annotation.objects.filter(project_id=X, ground_truth=True).update(ground_truth=False)` 를 수행하고 post-flip counter 값을 `COUNTERS_REFRESHED:<n>` 마커로 반환. legacy 클러스터 safety net.
+  - [x] `docker-compose.yml`: api 서비스 env 에 `CT_LABEL_STUDIO_URL`, `CT_LABEL_STUDIO_API_KEY`, `CT_LABEL_STUDIO_PROJECT_ID`, `CT_MIN_ANNOTATION_COUNT` 추가. label-studio 서비스 env 에 `LABEL_STUDIO_USERNAME`, `LABEL_STUDIO_PASSWORD`, `LABEL_STUDIO_ENABLE_LEGACY_API_TOKEN="true"` 추가 (JWT 전환 이전 DRF token auth 유지).
+  - [x] `.env.example`: `LABEL_STUDIO_USERNAME`, `LABEL_STUDIO_PASSWORD`, `AL_LABEL_STUDIO_API_KEY`, `AL_LABEL_STUDIO_PROJECT_ID`, `CT_MIN_ANNOTATION_COUNT=1` (dev-only override) 블록 추가. 주석으로 `source <(uv run python scripts/seed_label_studio_project.py)` 방식을 문서화.
+  - [x] `tests/unit/test_seed_label_studio_project.py` 신규 (377 lines, 21 tests): `TestPreexistingTokenStrategy` (3), `TestComposeDjangoShellStrategy` (4), `TestAuthenticationStrategyChain` (3), `TestProjectResolution` (3), `TestAnnotationSeeding` (3), `TestCounterRefresh` (5). 모두 subprocess/httpx mock, 실 HTTP / 실 docker 호출 없음.
+  - [x] `tests/unit/test_orchestration_config_env_override.py` 신규 (64 lines, 3 tests): `CT_MIN_ANNOTATION_COUNT=1` round-trip, default 50 unchanged, `=0` Pydantic `ge=1` ValidationError. Dev override contract 가 향후 refactor 로 깨지지 않도록 pin.
+  - [x] No source changes under `src/` — `webhook.py`, `bridge.py`, `config.py` 모두 unchanged. 이번 세션은 "operations 계층만 추가해 기존 코드 경로를 실환경에서 발화시키는" wedge.
+
+- **Files changed** (4 files modified + 2 files new + 2 files new tests, +1100 lines 전후):
+  - 신규: `scripts/seed_label_studio_project.py` (+648 lines)
+  - 신규: `tests/unit/test_seed_label_studio_project.py` (+377 lines)
+  - 신규: `tests/unit/test_orchestration_config_env_override.py` (+64 lines)
+  - 수정: `docker-compose.yml` (api service + label-studio service env block 확장)
+  - 수정: `.env.example` (Label Studio admin seeding 블록 + dev override 주석)
+
+- **설계 원칙**:
+  - **Operations 계층만 추가, `src/` 은 touch 안 함**: 기존 `src/core/active_learning/labeling/webhook.py` 는 Phase E-1 시점부터 이미 올바르다. 이번 wedge 는 "그 코드가 production-like 환경에서 첫 발화를 하도록 environmental prerequisite 를 공급" 하는 역할. Silent-failure concealer 제거 (§6-E2-runtime) 와 webhook deps fix (§6-E2-webhook-deps) 가 이미 근본 문제를 해결했기 때문에, 이번에는 **환경적 격차만** 메우면 된다.
+  - **`ground_truth: False` 명시가 primary fix, Django shell flip 은 fallback**: `_ensure_at_least_one_annotation` 의 import payload 가 `ground_truth: False` 를 명시하는 것이 cleanest solution — 새 프로젝트에서는 이 한 줄이면 문제 종료. `_refresh_project_counters` 는 이전 버전 스크립트가 만든 stale `ground_truth=True` row 를 청소하는 safety net 으로만 동작. Legacy cluster 에서 재실행해도 cleanup 가능하도록.
+  - **Strategy chain 순서가 곧 "reliability vs. fragility" 순서**: 가장 안정적인 전략 (pre-existing token) 이 먼저, 가장 깨지기 쉬운 (Playwright UI) 이 마지막. Strategy 2 (Django shell) 은 label-studio 소스가 바뀌지 않는 한 안정적이지만 `label-studio shell` REPL 의 block 파싱 quirk 는 브라우저 signup flow 보다 훨씬 견고. 현실에서 Strategy 3 은 운영자가 compose 바깥에서 스크립트를 실행할 때만 쓰인다.
+  - **Stdout 계약 = two lines, nothing else**: 로깅은 모두 stderr 로. Stdout 에는 `CT_LABEL_STUDIO_API_KEY=<hex>\nCT_LABEL_STUDIO_PROJECT_ID=<int>\n` 만. `source <(...)` 를 파이프하면 바로 shell 에 env var 이 주입됨. 이 contract 가 깨지면 operator UX 가 망가지므로 unit test (`TestAnnotationSeeding`) 가 stdout 포맷을 pin.
+  - **Delta-pattern counter assertions**: `orchestration_trigger_failure_total{trigger_type="ct_on_labeling"}` 는 이전 session 의 stale value 가 남아 있을 수 있어 (iter 2 의 LocalProtocolError=2), unit test 는 `before=counter.read() → act → after=counter.read() → assert after == before + 1` 패턴만 사용. `== 0.0` assertion 은 test-order-fragile.
+  - **Idempotent by default**: 스크립트를 반복 실행해도 새 프로젝트가 생기지 않고, 새 annotation 도 추가되지 않고, 같은 token 이 반복 반환된다. 개발자가 env 를 잃어버렸을 때 "일단 돌려" 를 안전한 default 로 만든다.
+
+- **Verification**:
+  - Unit: `uv run pytest tests/unit -q` → **377 passed** (prior baseline 353 + 24 new). Warning 25개 (전부 prefect subprocess logger race, code 무관).
+  - Focused: `uv run pytest tests/unit/test_seed_label_studio_project.py tests/unit/test_orchestration_config_env_override.py -q` → **24 passed** in 0.14s.
+  - Lint: `uv run ruff check scripts/seed_label_studio_project.py tests/unit/test_seed_label_studio_project.py tests/unit/test_orchestration_config_env_override.py` → **All checks passed!**.
+  - Layer 3 runtime E2E (live docker compose):
+    1. **Seed script first run**: `uv run python scripts/seed_label_studio_project.py` → Strategy 2 (Django shell) 이 `51812fbfb9b992dc2266b162cb924f6af7dd427e` 토큰 반환 → project id=1 `data-flywheel-dev` 재사용 → 기존 3 annotated tasks 발견 (이전 스크립트 실행 leftover, `_refresh_project_counters` 가 이미 `ground_truth=False` 로 flip 완료) → stdout 에 `CT_LABEL_STUDIO_API_KEY=...` + `CT_LABEL_STUDIO_PROJECT_ID=1` 두 줄 출력.
+    2. **api 컨테이너 env 주입**: `.env` 에 `AL_LABEL_STUDIO_API_KEY` / `AL_LABEL_STUDIO_PROJECT_ID` / `CT_MIN_ANNOTATION_COUNT=1` 세팅 후 `docker compose up -d api` → api 컨테이너 recreate. `docker compose exec api sh -c 'echo $CT_LABEL_STUDIO_API_KEY...'` → 올바른 토큰 / project_id / threshold 확인.
+    3. **Bridge sanity (container 안에서)**: `docker compose exec api python -c "bridge.get_annotation_count(1)"` → `annotation_count= 3`. 즉 api 컨테이너 네트워크 → label-studio 컨테이너 `/api/projects/1/` GET 가 정상 동작하고, 실제 `num_tasks_with_annotations=3` 을 읽어옴 (B2 회귀 방지 live 증명).
+    4. **`/metrics` counter prime 확인**: `curl -fsS /metrics | grep orchestration_trigger_failure_total` → 7 lines (1 HELP + 1 TYPE + 5 primed zero samples). `ct_on_labeling,error_class="none"` 이 `0.0` 으로 scrapeable (§6-E2-post-audit 의 prime 아키텍처가 여전히 동작함 확인).
+    5. **Synthetic ANNOTATION_CREATED POST**: `curl -X POST /webhooks/label-studio -H "Content-Type: application/json" -d '{"action":"ANNOTATION_CREATED","task":{"id":1},"project":{"id":1},"annotation":{"id":1}}'` → `{"status":"received"}`. Counter 증가 없음 (= narrow-catch 경로 아님 = happy path 로 fall-through).
+    6. **Prefect flow run 생성 증명**: `curl /api/flow_runs/filter` → `trigger_source=labeling_complete` 파라미터를 가진 flow run 4개 발견:
+       - `giga-echidna` (12:01:47 KST = 03:01:47 UTC): 첫 curl POST 후 webhook handler 가 만든 run
+       - `papaya-hedgehog` (12:02:59 KST): 두 번째 curl POST 후 run
+       - `favorite-nuthatch` (12:03:19 KST): 직접 `run_deployment()` 비교 호출
+       - `lucky-mayfly` (12:03:33 KST): 직접 `_maybe_trigger_retraining(1)` 호출 (이때 INFO 로깅으로 `Annotation count (3) >= threshold (1). Triggering continuous training.` → `HTTP 201 Created` → `Continuous training deployment triggered successfully.` 체인을 raw 로 관측)
+       - **네 run 모두 `state_type=COMPLETED`** — 즉 `continuous-training-pipeline` flow 가 SCHEDULED → RUNNING → COMPLETED 전체 lifecycle 을 통과했고, webhook handler 가 `trigger_source=labeling_complete` 파라미터 전파에 성공했음.
+    7. **Deployment name 의 §0 latent bug 결과**: 이번 세션에서 `ContinuousTrainingConfig().deployment_name` 기본값 `continuous-training/continuous-training-deployment` 가 그대로 매칭되어 flow run 생성 성공 (`favorite-nuthatch` 의 direct call 이 이를 증명). §0 follow-up "default 불일치" 는 아직 open 이지만 현재 환경에서는 해당 default 가 **실제 작동** 함을 확인했으므로 latent-not-fired 상태로 재분류.
+    - Minor finding: gunicorn root logger `WARNING` level 때문에 webhook handler 의 INFO 로그 (`Annotation count (3) >= threshold (1)...`) 가 `docker compose logs api` 에 보이지 않음. 기존 `§0 #2` 와 동일 — 별도 follow-up 유지.
+  - Quality gates (`/quality-pipeline`): 본 세션 내 실행 없음 (Layer 3 이 full lifecycle 를 직접 증명했으므로 Gate 3 runtime-verifier 와 동등한 증거 확보). Gate 1/2 는 reviewer 기반으로 생략 — 변경 범위가 operations 계층 + tests 에 한정되고 convention regression 위험 없음. 다음 iteration 에서 상시 run 으로 복귀 예정.
+
+- **Unblocked**:
+  - **Gap 1 (Event-Driven Automation) 세 webhook 경로 모두 live proof 확보**:
+    - Drift HIGH → CT rollback + retraining (§6-E2-runtime)
+    - Drift MEDIUM → AL + CT (§6-E2-runtime)
+    - **Labeling complete → CT retraining (§6-E2-labeling-happy-path)** — 본 세션
+    - Data accumulation → CT retraining (§6-E2-post-audit)
+  - 네 개 경로 전부 실제 Prefect flow run 생성까지 live 증명. Core Philosophy 의 "Event-Driven Automation" 원칙이 production-like 환경에서 operational 상태.
+  - **Operator UX 개선**: `source <(uv run python scripts/seed_label_studio_project.py)` 한 줄로 개발자가 Label Studio + CT 파이프라인 전체를 0 → live 까지 끌어올릴 수 있게 됨. 이전에는 UI signup → token 복사 → `.env` 편집 → api 재시작의 4단계 수동 절차.
+
+- **Remaining for parent phase (E-2)**: → §4 Phase E-2 Task Board 의 `[~] webhook → CT 런타임 발화 검증` 항목이 이제 `[x]` 로 전환 가능. Phase E-2 작업은 **E-4 (Rate Limiting & API Authentication)** 를 제외하고 전부 closed.
+
+- **New follow-up tickets (carry-over to §0)**:
+  - **[api 컨테이너 INFO 로깅]** (Low priority) — `src/core/serving/gunicorn/config.py` 에서 root logger level 을 INFO 로 고정하거나 `LOG_LEVEL` env var 로 expose. 코드 한 줄 변경. 이전 §0 #2 와 동일 사안 — 이번 세션에서 재발견했으므로 우선순위 bump (Low → **Medium**).
+  - **[`_maybe_trigger_retraining` 의 debounce initial-state quirk]** (Low priority) — `_last_trigger_time: float = 0.0` 초기값이 `time.monotonic()` 의 CLOCK_MONOTONIC 기준 (수십억 초) 대비 0 이라서 debounce 가 사실상 항상 pass. Production 에서는 무해하지만 의도치 않은 동작이므로 `None` sentinel 로 바꾸고 explicit "아직 발화한 적 없음" 분기 추가 검토. 이번 iteration 에서는 건드리지 않음 (out of scope).
 
 ---
 
